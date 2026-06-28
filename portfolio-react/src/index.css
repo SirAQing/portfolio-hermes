@@ -1,0 +1,156 @@
+@import 'highlight.js/styles/github-dark.css';
+
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-base: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --bg-pill: #ffffff;
+    --border: #e2e8f0;
+    --border-subtle: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent: #0f172a;
+    --link: #64748b;
+    --link-hover: #0f172a;
+    --tag-bg: #f1f5f9;
+    --tag-text: #64748b;
+    --star-color: #eab308;
+    --badge-green: #dcfce7;
+    --badge-green-t: #166534;
+    --badge-blue: #dbeafe;
+    --badge-blue-t: #1e40af;
+    
+    --dot-color: rgba(0, 0, 0, 0.05);
+    --glow-primary: rgba(147, 197, 253, 0.4);
+    --glow-secondary: rgba(233, 213, 255, 0.4);
+    --bg-section-alt: rgba(148, 163, 184, 0.06);
+  }
+
+  :root.dark {
+    --bg-base: #0a0a0a;
+    --bg-card: #111111;
+    --bg-card-hover: #1a1a1a;
+    --bg-pill: #1c1c1c;
+    --border: #222222;
+    --border-subtle: #1a1a1a;
+    --text-primary: #f0f0f0;
+    --text-secondary: #888888;
+    --text-muted: #555555;
+    --accent: #e8e8e8;
+    --link: #a8a8a8;
+    --link-hover: #f0f0f0;
+    --tag-bg: #1e1e1e;
+    --tag-text: #aaaaaa;
+    --star-color: #f5c542;
+    --badge-green: #1a3a2a;
+    --badge-green-t: #4ade80;
+    --badge-blue: #1a2a3a;
+    --badge-blue-t: #60a5fa;
+
+    --dot-color: rgba(255, 255, 255, 0.05);
+    --glow-primary: rgba(56, 189, 248, 0.1);
+    --glow-secondary: rgba(168, 85, 247, 0.1);
+    --bg-section-alt: rgba(255, 255, 255, 0.03);
+  }
+
+  body {
+    @apply bg-bg-base text-text-primary font-sans antialiased transition-colors duration-300;
+  }
+}
+
+@layer components {
+  .prose-custom {
+    @apply text-text-secondary leading-relaxed;
+  }
+  .prose-custom h1, .prose-custom h2, .prose-custom h3, .prose-custom h4, .prose-custom h5, .prose-custom h6 {
+    @apply text-accent font-semibold tracking-tight;
+  }
+  .prose-custom p {
+    @apply mb-6 text-[15px] sm:text-base;
+  }
+  .prose-custom a {
+    @apply text-blue-500 hover:text-blue-600 transition-colors font-medium decoration-blue-500/30 underline underline-offset-4 hover:decoration-blue-600;
+  }
+  .prose-custom blockquote {
+    @apply pl-4 my-6 border-l-4 border-blue-400 dark:border-blue-500 py-3 pr-4 rounded-r-lg italic;
+  }
+  .prose-custom code {
+    @apply px-1.5 py-0.5 mx-0.5 rounded-md bg-bg-card border border-border-subtle text-[0.875em] text-blue-600 dark:text-blue-400 font-mono;
+  }
+  .prose-custom pre code {
+    @apply p-0 m-0 bg-transparent border-none text-inherit text-sm;
+  }
+  .prose-custom ul, .prose-custom ol {
+    @apply pl-6 mb-6;
+  }
+  .prose-custom li {
+    @apply mb-2;
+  }
+}
+
+.dot-bg {
+  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Hide native scrollbars on code blocks to prevent visual artifacts */
+.prose-custom pre::-webkit-scrollbar {
+  display: none;
+  height: 0;
+  width: 0;
+}
+.prose-custom pre {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Ensure transparent backgrounds inside code blocks */
+.prose-custom pre code,
+.prose-custom pre code.hljs,
+.prose-custom pre code span {
+  background: transparent !important;
+}
+
+/* For code blocks WITH explicit language: override github-dark.css defaults
+   that create nested scroll context and duplicate padding inside <pre> */
+.prose-custom pre code.hljs {
+  padding: 0 !important;
+  overflow-x: visible !important;
+}
+
+.hero-glow-1 {
+  background: radial-gradient(circle, var(--glow-primary) 0%, transparent 70%);
+}
+
+.hero-glow-2 {
+  background: radial-gradient(circle, var(--glow-secondary) 0%, transparent 70%);
+}

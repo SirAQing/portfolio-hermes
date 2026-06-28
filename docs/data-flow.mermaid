@@ -1,0 +1,87 @@
+graph TB
+    subgraph Frontend["前端 (React 19 SPA)"]
+        subgraph GlobalState["全局状态"]
+            I18n["I18nProvider<br/>lang: en|zh<br/>t(key) → string"]
+            Theme["HeaderActions<br/>isDark → DOM classList"]
+        end
+
+        subgraph Sections["页面 Sections"]
+            Hero["HeroSection<br/>打字机 · 头像 · 3 CTA<br/>入场动画 · 滚动箭头"]
+            Exp["ExperienceSection<br/>6 能力标签 · 2 经历"]
+            Proj["ProjectsSection<br/>4 项目卡片"]
+            Edu["Education + Patents"]
+            Skills["SkillsSection<br/>语言 · 软技能 · 技术栈"]
+            Contact["ContactSection<br/>邮件按钮"]
+        end
+
+        subgraph Nav["导航"]
+            Sidebar["SidebarNav<br/>IntersectionObserver · lg:only"]
+        end
+
+        subgraph Chat["AI 聊天浮窗"]
+            FloatBtn["头像按钮<br/>dispatch open-chat"]
+            ChatPanel["聊天窗口<br/>SSE 流式渲染<br/>QuickActions 自动发送"]
+        end
+    end
+
+    subgraph Backend["Hermes 后端 (FastAPI)"]
+        API["main.py<br/>5 个 API 端点<br/>health · chat · stream · messages · notify-test"]
+        LLM["llm.py<br/>DeepSeek API<br/>trust_env=False"]
+        Models["models.py<br/>SQLite CRUD<br/>WAL 模式"]
+        Notify["notify.py<br/>飞书 + PushPlus<br/>实时通知 + 紧急通知"]
+        Scheduler["定时任务<br/>8:00 / 12:00 / 17:00"]
+    end
+
+    subgraph External["外部服务"]
+        DeepSeek["DeepSeek API<br/>LLM 推理 (OpenAI 兼容)"]
+        Feishu["飞书 Webhook<br/>interactive card 格式"]
+        PushPlus["PushPlus<br/>微信 HTML 推送"]
+    end
+
+    subgraph Storage["持久化"]
+        SQLite["hermes.db<br/>conversations + messages"]
+        LS["localStorage<br/>theme + lang"]
+    end
+
+    %% 前端内部数据流
+    I18n -->|"useI18n()"| Hero
+    I18n -->|"useI18n()"| Exp
+    I18n -->|"useI18n()"| Proj
+    I18n -->|"useI18n()"| Edu
+    I18n -->|"useI18n()"| Skills
+    I18n -->|"useI18n()"| Contact
+    I18n -->|"useI18n()"| Sidebar
+    I18n -->|"useI18n()"| ChatPanel
+
+    Theme -->|"classList.dark"| LS
+    I18n -->|"localStorage"| LS
+
+    FloatBtn -->|"toggle"| ChatPanel
+    Hero -->|"dispatch('open-chat')"| ChatPanel
+    Hero -->|"↓ 滚动箭头 scrollToView"| Exp
+    ChatPanel -->|"POST /api/chat/stream<br/>SSE"| API
+
+    %% 后端数据流
+    API -->|"查询历史"| Models
+    API -->|"发送消息"| LLM
+    API -->|"await 实时通知"| Notify
+    API -->|"create_task 紧急通知"| Notify
+    API -->|"存储对话"| Models
+
+    LLM -->|"HTTP POST<br/>stream=true"| DeepSeek
+    Notify -->|"Webhook POST"| Feishu
+    Notify -->|"API POST"| PushPlus
+
+    Models --> SQLite
+    Scheduler -->|"定时触发"| Notify
+
+    %% 样式
+    classDef frontend fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    classDef backend fill:#1a3a2a,stroke:#10b981,color:#d1fae5
+    classDef external fill:#3a1a1a,stroke:#ef4444,color:#fecaca
+    classDef storage fill:#3a3a1a,stroke:#eab308,color:#fef9c3
+
+    class Hero,Exp,Proj,Edu,Skills,Contact,Sidebar,ChatPanel,FloatBtn frontend
+    class API,LLM,Models,Notify,Scheduler backend
+    class DeepSeek,Feishu,PushPlus external
+    class SQLite,LS storage

@@ -1,0 +1,89 @@
+{
+  "articles": [
+    {
+      "slug": "linux-deploy-ollama",
+      "title": "Linux服务器部署 Docker + Ollama 本地大模型执行方案",
+      "titleEn": "Linux Server Deployment: Docker + Ollama Local LLM Guide",
+      "source": "",
+      "sourceRepo": "",
+      "tags": ["Linux", "Docker", "Ollama", "大模型部署", "运维", "企业落地"],
+      "tagsEn": ["Linux", "Docker", "Ollama", "LLM Deployment", "DevOps", "Enterprise"],
+      "date": "2026-06-21",
+      "category": "部署方案",
+      "categoryEn": "Deployment Guides",
+      "description": "从环境准备、Docker 安装、Ollama 容器部署到模型拉取与 API 调用的完整 SOP，含纯 CPU 与 GPU 两种方案。企业实际落地执行方案。",
+      "descriptionEn": "Complete SOP from environment setup, Docker installation, Ollama container deployment to model pulling and API integration. Covers both CPU-only and GPU deployment scenarios. Enterprise production deployment guide."
+    },
+    {
+      "slug": "linux-deploy-dify-ollama",
+      "title": "Linux服务器部署 Docker + Dify 接入本地大模型方案",
+      "titleEn": "Linux Server Deployment: Docker + Dify with Local LLM Integration Guide",
+      "source": "",
+      "sourceRepo": "",
+      "tags": ["Linux", "Docker", "Dify", "Ollama", "RAG", "大模型部署", "企业落地"],
+      "tagsEn": ["Linux", "Docker", "Dify", "Ollama", "RAG", "LLM Deployment", "Enterprise"],
+      "date": "2026-06-21",
+      "category": "部署方案",
+      "categoryEn": "Deployment Guides",
+      "description": "通过 Docker Compose 部署 Dify 并接入本机 Ollama 模型的完整方案，含 PostgreSQL 修复、镜像替换、网络配置等实战排障记录。",
+      "descriptionEn": "Complete guide for deploying Dify via Docker Compose and connecting to local Ollama models. Includes PostgreSQL fix, image mirroring, network configuration, and real-world troubleshooting records."
+    },
+    {
+      "slug": "vibe-coding-fullstack",
+      "title": "Vibe Coding 时代下的全栈开发",
+      "titleEn": "Full-Stack Development in the Vibe Coding Era",
+      "source": "https://datawhalechina.github.io/easy-vibe/zh-cn/appendix/1-computer-fundamentals/vibe-coding-fullstack.html",
+      "sourceRepo": "https://github.com/datawhalechina/easy-vibe",
+      "tags": ["全栈", "Vibe Coding", "入门"],
+      "tagsEn": ["Full-Stack", "Vibe Coding", "Intro"],
+      "date": "2025-06-20",
+      "category": "学习笔记",
+      "categoryEn": "Learning Notes",
+      "description": "从计算机领域全景到前后端、全栈、AI 工程师的完整认知框架，帮你理解 Vibe Coding 时代该学什么、怎么学。",
+      "descriptionEn": "A complete cognitive framework from the CS landscape to front-end, back-end, full-stack, and AI engineering — what to learn and how in the Vibe Coding era."
+    },
+    {
+      "slug": "ai-native-app-design",
+      "title": "AI 原生应用设计",
+      "titleEn": "AI-Native Application Design",
+      "source": "https://datawhalechina.github.io/easy-vibe/zh-cn/appendix/8-artificial-intelligence/ai-native-app-design.html",
+      "sourceRepo": "https://github.com/datawhalechina/easy-vibe",
+      "tags": ["AI", "产品设计", "Prompt工程", "交互设计"],
+      "tagsEn": ["AI", "Product Design", "Prompt Engineering", "Interaction Design"],
+      "date": "2025-06-21",
+      "category": "学习笔记",
+      "categoryEn": "Learning Notes",
+      "description": "从架构对比、设计原则、Prompt 工程到交互模式，系统掌握 AI 原生应用的设计方法与请求处理全流程。",
+      "descriptionEn": "Master AI-native app design from architecture comparison, design principles, prompt engineering to interaction patterns and the full request lifecycle."
+    },
+    {
+      "slug": "ai-capability-dictionary",
+      "title": "AI 能力词典",
+      "titleEn": "AI Capability Dictionary",
+      "source": "https://datawhalechina.github.io/easy-vibe/zh-cn/appendix/8-artificial-intelligence/ai-capability-dictionary.html",
+      "sourceRepo": "https://github.com/datawhalechina/easy-vibe",
+      "tags": ["AI", "NLP", "多模态", "模型选型"],
+      "tagsEn": ["AI", "NLP", "Multimodal", "Model Selection"],
+      "date": "2025-06-21",
+      "category": "学习笔记",
+      "categoryEn": "Learning Notes",
+      "description": "系统梳理文本、图像、音频、视频、3D 到多模态的 AI 能力全景，覆盖代表性模型、产品与实战选型参考。",
+      "descriptionEn": "A systematic guide to the AI capability landscape — text, image, audio, video, 3D, and multimodal — with representative models, products, and practical selection references."
+    },
+    {
+      "slug": "technical-writing",
+      "title": "技术文档写作",
+      "titleEn": "Technical Documentation Writing",
+      "source": "https://datawhalechina.github.io/easy-vibe/zh-cn/appendix/9-engineering-excellence/technical-writing.html",
+      "sourceRepo": "https://github.com/datawhalechina/easy-vibe",
+      "tags": ["技术写作", "文档", "工程实践"],
+      "tagsEn": ["Tech Writing", "Documentation", "Engineering Practice"],
+      "date": "2025-06-21",
+      "category": "学习笔记",
+      "categoryEn": "Learning Notes",
+      "description": "掌握技术文档的分类、写作原则与实战方法，用清晰准确的文档提升团队协作效率与项目质量。",
+      "descriptionEn": "Master documentation types, writing principles, and practical methods to improve team collaboration and project quality with clear, accurate docs."
+    }
+  ],
+  "projects": []
+}

@@ -1,0 +1,29 @@
+services:
+  # Hermes API backend
+  hermes-api:
+    build: ./hermes
+    container_name: hermes-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - hermes-data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/hermes.db
+    restart: unless-stopped
+
+  # Portfolio frontend (Vite)
+  portfolio:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: portfolio-web
+    ports:
+      - "80:80"
+    depends_on:
+      - hermes-api
+    restart: unless-stopped
+
+volumes:
+  hermes-data:

@@ -1,0 +1,25 @@
+name: Keep Hermes Alive
+
+# Ping the production API every 10 minutes to prevent Render/Free-tier
+# cold starts. This keeps the container warm so the first real visitor
+# request is fast.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm up Hermes API
+        run: |
+          curl -sf -o /dev/null -w "HTTP %{http_code} — %{time_total}s\n" \
+            https://liumingqing.com/api/warmup || true
+
+      - name: Health check fallback
+        if: failure()
+        run: |
+          curl -sf -o /dev/null -w "Health: HTTP %{http_code}\n" \
+            https://liumingqing.com/api/health || true
