@@ -1,6 +1,4 @@
 """用户数据访问层测试"""
-import pytest
-from models import init_db
 from core.auth.password import hash_password
 from core.auth.user_repo import (
     create_user,
@@ -8,11 +6,6 @@ from core.auth.user_repo import (
     get_user_by_id,
     update_last_login,
 )
-
-
-@pytest.fixture(autouse=True)
-def db():
-    init_db()
 
 
 def test_create_and_get_user():

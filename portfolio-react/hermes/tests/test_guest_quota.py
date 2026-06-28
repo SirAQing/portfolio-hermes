@@ -1,17 +1,9 @@
 """访客配额管理测试"""
-import pytest
-from models import init_db
 from core.auth.guest_quota import (
     check_guest_quota,
     increment_guest_quota,
     GUEST_DAILY_LIMIT,
 )
-from config import GUEST_DAILY_LIMIT as CONFIG_LIMIT
-
-
-@pytest.fixture(autouse=True)
-def db():
-    init_db()
 
 
 def test_guest_starts_with_full_quota():
