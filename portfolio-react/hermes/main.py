@@ -8,7 +8,7 @@ import time
 import uuid
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -23,6 +23,8 @@ from notify import send_urgent_notification, send_periodic_summary, check_urgent
 from api.auth import router as auth_router
 from api.admin import router as admin_router
 from core.auth.init_owner import ensure_owner_account
+from core.auth.deps import UserContext, get_current_user_or_guest
+from core.auth.guest_quota import increment_guest_quota
 
 
 # ── Background task for scheduled summaries ──
@@ -141,11 +143,22 @@ async def warmup():
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest, background_tasks: BackgroundTasks):
+async def chat(
+    req: ChatRequest,
+    background_tasks: BackgroundTasks,
+    ctx: UserContext = Depends(get_current_user_or_guest),
+):
     """
     Non-streaming chat endpoint.
     Receives visitor message, gets AI reply, stores conversation.
     """
+    # 访客配额检查
+    if ctx.is_guest and ctx.quota_remaining <= 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Guest quota exhausted. Please log in to continue.",
+        )
+
     # Get or create conversation
     conv_id = req.conversation_id
     if not conv_id:
@@ -182,15 +195,30 @@ async def chat(req: ChatRequest, background_tasks: BackgroundTasks):
     except Exception as e:
         print(f"[chat] Notification error: {e}")
 
+    # 访客配额计数
+    if ctx.is_guest:
+        increment_guest_quota(ctx.ip)
+
     return ChatResponse(conversation_id=conv_id, message_id=msg_id, reply=reply)
 
 
 @app.post("/api/chat/stream")
-async def chat_stream(req: ChatRequest, background_tasks: BackgroundTasks):
+async def chat_stream(
+    req: ChatRequest,
+    background_tasks: BackgroundTasks,
+    ctx: UserContext = Depends(get_current_user_or_guest),
+):
     """
     Streaming chat endpoint using SSE.
     Streams AI response token-by-token.
     """
+    # 访客配额检查
+    if ctx.is_guest and ctx.quota_remaining <= 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Guest quota exhausted. Please log in to continue.",
+        )
+
     # Get or create conversation
     conv_id = req.conversation_id
     if not conv_id:
@@ -226,6 +254,10 @@ async def chat_stream(req: ChatRequest, background_tasks: BackgroundTasks):
         add_message(conv_id, "assistant", full_reply)
 
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        # 访客配额计数
+        if ctx.is_guest:
+            increment_guest_quota(ctx.ip)
 
         # Send realtime notification (event loop is active during streaming)
         try:
