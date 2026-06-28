@@ -9,12 +9,25 @@ import uuid
 from contextlib import contextmanager
 from config import DATABASE_PATH
 
+try:
+    import sqlite_vec  # type: ignore
+    _HAVE_VEC = True
+except ImportError:
+    _HAVE_VEC = False
+
 
 def get_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    if _HAVE_VEC:
+        conn.enable_load_extension(True)
+        try:
+            sqlite_vec.load(conn)
+        except Exception:
+            pass
+        conn.enable_load_extension(False)
     return conn
 
 
