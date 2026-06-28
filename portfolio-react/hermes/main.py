@@ -300,6 +300,134 @@ async def get_messages(conv_id: str):
     return {"conversation_id": conv_id, "messages": messages}
 
 
+@app.post("/api/chat/agent")
+async def chat_agent_stream(
+    req: ChatRequest,
+    ctx: UserContext = Depends(get_current_user_or_guest),
+):
+    """
+    ReAct Agent streaming endpoint using SSE.
+
+    Streams full ReAct loop:
+        think → tool_call → tool_result → chunk → done
+
+    Different from /api/chat/stream: this endpoint uses the AgentEngine
+    with function calling and parallel tool execution.
+    """
+    # 访客配额检查
+    if ctx.is_guest and ctx.quota_remaining <= 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Guest quota exhausted. Please log in to continue.",
+        )
+
+    # Get or create conversation
+    conv_id = req.conversation_id
+    if not conv_id:
+        visitor_id = str(uuid.uuid4())[:8]
+        conv_id = create_conversation(visitor_id, req.visitor_name)
+
+    conv = get_conversation(conv_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Store visitor message
+    add_message(conv_id, "visitor", req.message)
+
+    # Check urgent keywords
+    is_urgent = check_urgent_keywords(req.message, URGENT_KEYWORDS)
+    if is_urgent:
+        mark_urgent(conv_id)
+        asyncio.create_task(send_urgent_notification(conv_id, req.message))
+
+    # Build message history (exclude system, agent engine 会自己加)
+    history_msgs = get_conversation_messages(conv_id, limit=20)
+    llm_messages = [
+        {"role": m["role"], "content": m["content"]}
+        for m in history_msgs
+        if m["role"] != "system"
+    ]
+
+    # RAG context（用于注入 system prompt）
+    rag_context = ""
+    from core.rag.rag_chat import should_use_rag, retrieve_context
+    if should_use_rag(req.message):
+        rag_context, _ = await retrieve_context(req.message)
+
+    # Lazy import 避免启动时加载 agent 模块
+    from core.agent.engine import AgentEngine
+    from core.agent.tools.registry import create_default_registry
+
+    registry = create_default_registry()
+    engine = AgentEngine(registry=registry)
+
+    async def agent_event_generator():
+        yield f"data: {json.dumps({'type': 'conv_id', 'conversation_id': conv_id})}\n\n"
+
+        full_reply = ""
+        try:
+            async for event in engine.run(
+                query=req.message,
+                history=llm_messages,
+                context=rag_context,
+            ):
+                data = event.to_sse_data()
+                yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+                # 收集最终回复（chunk 类型）
+                if event.type == "chunk":
+                    full_reply += event.content
+
+            # 如果 finalize 未生成 chunk（如 STUCK 直出 last_content），用 think 内容兜底
+            if not full_reply:
+                # 从 events 里无法回溯，这里简化处理
+                pass
+
+            # 保存完整回复到 DB
+            if full_reply:
+                add_message(conv_id, "assistant", full_reply)
+
+            # 访客配额计数
+            if ctx.is_guest:
+                increment_guest_quota(ctx.ip)
+
+            # Send realtime notification
+            try:
+                await send_realtime_notification(conv_id, req.message, full_reply)
+            except Exception as e:
+                print(f"[agent-notify] Error: {e}")
+
+        except Exception as e:
+            err_data = {"type": "error", "error": f"{type(e).__name__}: {e}"}
+            yield f"data: {json.dumps(err_data, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        agent_event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.get("/api/agent/tools")
+async def list_agent_tools(ctx: UserContext = Depends(get_current_user_or_guest)):
+    """列出 Agent 可用的工具（供前端展示）。"""
+    from core.agent.tools.registry import create_default_registry
+
+    registry = create_default_registry()
+    tools = []
+    for tool in registry:
+        tools.append({
+            "name": tool.name(),
+            "description": tool.description(),
+            "parameters": tool.parameters_schema(),
+        })
+    return {"tools": tools, "count": len(tools)}
+
+
 @app.post("/api/notify/test")
 async def test_notification():
     """Manually trigger a test notification to verify Feishu/PushPlus setup."""
