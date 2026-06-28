@@ -22,6 +22,7 @@ from llm import get_response_stream, chat_completion
 from notify import send_urgent_notification, send_periodic_summary, check_urgent_keywords, send_realtime_notification
 from api.auth import router as auth_router
 from api.admin import router as admin_router
+from api.kb import router as kb_router
 from core.auth.init_owner import ensure_owner_account
 from core.auth.deps import UserContext, get_current_user_or_guest
 from core.auth.guest_quota import increment_guest_quota
@@ -89,6 +90,7 @@ app.add_middleware(
 # 注册认证和管理路由
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(kb_router)
 
 
 # ── Request/Response Models ──
