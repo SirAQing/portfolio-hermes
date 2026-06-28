@@ -185,8 +185,14 @@ async def chat(
     history = get_conversation_messages(conv_id, limit=20)
     llm_messages = [{"role": m["role"], "content": m["content"]} for m in history]
 
+    # RAG 增强检索
+    rag_context = ""
+    from core.rag.rag_chat import should_use_rag, retrieve_context
+    if should_use_rag(req.message):
+        rag_context, _rag_results = await retrieve_context(req.message)
+
     # Get AI response
-    reply = await chat_completion(llm_messages, stream=False)
+    reply = await chat_completion(llm_messages, stream=False, rag_context=rag_context)
 
     # Store AI response
     add_message(conv_id, "assistant", reply)
@@ -244,11 +250,17 @@ async def chat_stream(
     history = get_conversation_messages(conv_id, limit=20)
     llm_messages = [{"role": m["role"], "content": m["content"]} for m in history]
 
+    # RAG 增强检索（在生成器外执行，避免每次流都重新检索）
+    rag_context = ""
+    from core.rag.rag_chat import should_use_rag, retrieve_context
+    if should_use_rag(req.message):
+        rag_context, _rag_results = await retrieve_context(req.message)
+
     async def event_generator():
         yield f"data: {json.dumps({'type': 'conv_id', 'conversation_id': conv_id})}\n\n"
 
         full_reply = ""
-        async for chunk in get_response_stream(llm_messages):
+        async for chunk in get_response_stream(llm_messages, rag_context=rag_context):
             full_reply += chunk
             yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
 

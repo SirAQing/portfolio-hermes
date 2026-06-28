@@ -8,23 +8,34 @@ from typing import AsyncGenerator
 from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, SYSTEM_PROMPT
 
 
-def _build_messages(messages: list[dict]) -> list[dict]:
-    """Prepend system prompt and normalize roles for DeepSeek API."""
+def _build_messages(messages: list[dict], rag_context: str = "") -> list[dict]:
+    """Prepend system prompt and normalize roles for DeepSeek API.
+
+    rag_context 非空时，注入到 system prompt 末尾。
+    """
     normalized = []
     for m in messages:
         role = m["role"]
         if role == "visitor":
             role = "user"
         normalized.append({"role": role, "content": m["content"]})
-    return [{"role": "system", "content": SYSTEM_PROMPT}] + normalized
+
+    system_content = SYSTEM_PROMPT
+    if rag_context:
+        from core.rag.rag_chat import build_rag_system_prompt
+        system_content = build_rag_system_prompt(SYSTEM_PROMPT, rag_context)
+
+    return [{"role": "system", "content": system_content}] + normalized
 
 
-async def chat_completion(messages: list[dict], stream: bool = False):
+async def chat_completion(messages: list[dict], stream: bool = False, rag_context: str = ""):
     """
     Non-streaming chat completion.
     Returns the complete response string.
+
+    rag_context: RAG 检索到的上下文，非空时注入到 system prompt。
     """
-    full_messages = _build_messages(messages)
+    full_messages = _build_messages(messages, rag_context)
 
     async with httpx.AsyncClient(timeout=60.0, trust_env=False) as client:
         return await _complete_response(client, full_messages)
@@ -50,12 +61,14 @@ async def _complete_response(client: httpx.AsyncClient, messages: list[dict]) ->
     return data["choices"][0]["message"]["content"]
 
 
-async def get_response_stream(messages: list[dict]) -> AsyncGenerator[str, None]:
+async def get_response_stream(messages: list[dict], rag_context: str = "") -> AsyncGenerator[str, None]:
     """
     Streaming completion — creates its own client and yields chunks.
     The httpx client lifecycle is managed within this generator.
+
+    rag_context: RAG 检索到的上下文，非空时注入到 system prompt。
     """
-    full_messages = _build_messages(messages)
+    full_messages = _build_messages(messages, rag_context)
 
     async with httpx.AsyncClient(timeout=120.0, trust_env=False) as client:
         async with client.stream(
