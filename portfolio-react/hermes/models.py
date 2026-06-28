@@ -124,7 +124,63 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_guest_quotas_lookup ON guest_quotas(ip_hash, query_date);
             CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
             CREATE INDEX IF NOT EXISTS idx_invites_code ON interviewer_invites(code);
+
+            -- ── RAG 表 ──
+            CREATE TABLE IF NOT EXISTS knowledge_bases (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                owner_id TEXT REFERENCES users(id),
+                is_public INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS documents (
+                id TEXT PRIMARY KEY,
+                kb_id TEXT NOT NULL REFERENCES knowledge_bases(id),
+                source_type TEXT NOT NULL,
+                source_path TEXT,
+                title TEXT NOT NULL,
+                raw_content TEXT,
+                status TEXT DEFAULT 'pending',
+                embedding_model TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            -- chunks 普通表存储元数据和内容（向量存在 vec0 虚拟表）
+            CREATE TABLE IF NOT EXISTS chunks (
+                id TEXT PRIMARY KEY,
+                doc_id TEXT NOT NULL REFERENCES documents(id),
+                kb_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                chunk_index INTEGER,
+                token_count INTEGER,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_chunks_doc ON chunks(doc_id);
+            CREATE INDEX IF NOT EXISTS idx_chunks_kb ON chunks(kb_id);
+            CREATE INDEX IF NOT EXISTS idx_docs_kb ON documents(kb_id);
         """)
+
+        # FTS5 关键词检索（CJK 二元分词由应用层处理，存储时已分词）
+        conn.execute(
+            """CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+                chunk_id UNINDEXED, content, tokenize='unicode61'
+            )"""
+        )
+
+        # vec0 向量表按需创建（不同 KB 可能用不同维度），此处创建默认 768 维
+        if _HAVE_VEC:
+            try:
+                conn.execute(
+                    """CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vec USING vec0(
+                        chunk_id TEXT PRIMARY KEY,
+                        embedding FLOAT[768]
+                    )"""
+                )
+            except Exception as e:
+                print(f"[models] vec0 table creation skipped: {e}")
 
 
 def create_conversation(visitor_id: str, visitor_name: str = None) -> str:
