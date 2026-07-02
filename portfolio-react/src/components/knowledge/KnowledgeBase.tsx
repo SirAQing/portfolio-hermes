@@ -57,6 +57,19 @@ interface ContentItem {
   origin: 'backend' | 'manifest';
 }
 
+interface ManifestArticle {
+  slug: string;
+  title: string;
+  category: string;
+  description?: string;
+  tags: string[];
+  date?: string;
+  source?: string;
+  sourceRepo?: string;
+}
+
+const manifestArticles = ((manifest as { articles?: ManifestArticle[] }).articles ?? []);
+
 function buildTopicTree(articles: ContentItem[]): TopicNode[] {
   const byCategory: Record<string, TopicNode[]> = {};
   for (const article of articles) {
@@ -199,7 +212,7 @@ export const KnowledgeBase = ({ articleSlug, onNavigate }: KnowledgeBaseProps) =
   const articles = useMemo<ContentItem[]>(() => {
     const backendMap = new Map(backendNotes.map((n) => [n.slug, n]));
     const merged: ContentItem[] = [...backendNotes];
-    for (const a of manifest.articles) {
+    for (const a of manifestArticles) {
       if (!backendMap.has(a.slug)) {
         merged.push({
           slug: a.slug,
@@ -291,7 +304,7 @@ export const KnowledgeBase = ({ articleSlug, onNavigate }: KnowledgeBaseProps) =
           };
         }
         // 后端没有则尝试本地 manifest
-        const legacy = manifest.articles.find((a) => a.slug === currentSlug);
+        const legacy = manifestArticles.find((a) => a.slug === currentSlug);   
         const content = legacy ? getLegacyArticleContent(currentSlug) : null;
         if (legacy && content) {
           return {
