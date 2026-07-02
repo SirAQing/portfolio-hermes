@@ -15,7 +15,7 @@ def setup_kb():
     kb_id = create_kb("测试KB", "测试用", owner_id=None, is_public=True)
     doc_id = create_document(kb_id, "markdown", "测试文档", raw_content="RAG 架构设计")
     insert_chunk(doc_id, kb_id, "RAG 知识库架构设计包括分块、检索和融合", 0, 10)
-    insert_chunk(doc_id, kb_id, "向量检索使用 sqlite-vec 扩展", 1, 10)
+    insert_chunk(doc_id, kb_id, "向量检索使用 Chroma 存储", 1, 10)
     # 重置默认 KB 缓存
     rc._default_kb_id = None
     return kb_id
@@ -40,8 +40,8 @@ async def test_knowledge_search_with_results(setup_kb):
     """有数据时返回搜索结果"""
     tool = KnowledgeSearchTool()
     result = await tool.execute(query="RAG 架构")
-    assert "Found" in result or "relevant" in result.lower()
     assert "RAG" in result
+    assert "来源文档" in result or "NO_RELEVANT_RESULTS" in result
 
 
 @pytest.mark.asyncio
@@ -69,4 +69,4 @@ async def test_knowledge_search_no_kb_available():
     rc._default_kb_id = None
     tool = KnowledgeSearchTool()
     result = await tool.execute(query="anything")
-    assert "Error" in result or "No knowledge base" in result
+    assert "NO_KNOWLEDGE_BASE" in result or "Error" in result

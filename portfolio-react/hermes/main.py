@@ -16,13 +16,14 @@ from pydantic import BaseModel
 from config import URGENT_KEYWORDS, SUMMARY_SCHEDULE_HOURS, CORS_ORIGINS
 from models import (
     init_db, create_conversation, get_conversation,
-    add_message, get_conversation_messages, mark_urgent
+    add_message, get_conversation_messages, mark_urgent, get_db
 )
 from llm import get_response_stream, chat_completion
 from notify import send_urgent_notification, send_periodic_summary, check_urgent_keywords, send_realtime_notification
 from api.auth import router as auth_router
 from api.admin import router as admin_router
 from api.kb import router as kb_router
+from api.notes import router as notes_router
 from core.auth.init_owner import ensure_owner_account
 from core.auth.deps import UserContext, get_current_user_or_guest
 from core.auth.guest_quota import increment_guest_quota
@@ -61,6 +62,18 @@ async def lifespan(app: FastAPI):
     init_db()
     print("[hermes] Database initialized.")
     ensure_owner_account()
+    from core.settings_repo import init_default_settings, get_llm_config_for_mode, validate_llm_config
+    init_default_settings()
+    print("[hermes] Default settings initialized.")
+
+    # 启动时校验 LLM 配置
+    for mode in ("visitor", "demo"):
+        try:
+            cfg = get_llm_config_for_mode(mode)
+            validate_llm_config(cfg)
+            print(f"[hermes] LLM config OK for mode={mode} (model={cfg['model']}).")
+        except ValueError as e:
+            print(f"[hermes] WARNING: mode={mode} {e}")
 
     # Start background summary task
     summary_task = asyncio.create_task(scheduled_summary_loop())
@@ -91,6 +104,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(kb_router)
+app.include_router(notes_router)
 
 
 # ── Request/Response Models ──
@@ -99,6 +113,8 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
     message: str
     visitor_name: str | None = None
+    web_search_enabled: bool = False
+    mode: str = "visitor"  # "visitor" | "demo"
 
 
 class ChatResponse(BaseModel):
@@ -165,11 +181,16 @@ async def chat(
     conv_id = req.conversation_id
     if not conv_id:
         visitor_id = str(uuid.uuid4())[:8]
-        conv_id = create_conversation(visitor_id, req.visitor_name)
+        conv_id = create_conversation(visitor_id, req.visitor_name, mode=req.mode)
 
     conv = get_conversation(conv_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # 如果是旧对话且无 mode，尝试从当前请求补齐（幂等）
+    if conv.get("mode") is None:
+        with get_db() as conn:
+            conn.execute("UPDATE conversations SET mode = ? WHERE id = ?", (req.mode, conv_id))
 
     # Store visitor message
     msg_id = add_message(conv_id, "visitor", req.message)
@@ -189,10 +210,10 @@ async def chat(
     rag_context = ""
     from core.rag.rag_chat import should_use_rag, retrieve_context
     if should_use_rag(req.message):
-        rag_context, _rag_results = await retrieve_context(req.message)
+        rag_context, _rag_results = await retrieve_context(req.message, mode=req.mode)
 
     # Get AI response
-    reply = await chat_completion(llm_messages, stream=False, rag_context=rag_context)
+    reply = await chat_completion(llm_messages, stream=False, rag_context=rag_context, mode=req.mode)
 
     # Store AI response
     add_message(conv_id, "assistant", reply)
@@ -231,11 +252,16 @@ async def chat_stream(
     conv_id = req.conversation_id
     if not conv_id:
         visitor_id = str(uuid.uuid4())[:8]
-        conv_id = create_conversation(visitor_id, req.visitor_name)
+        conv_id = create_conversation(visitor_id, req.visitor_name, mode=req.mode)
 
     conv = get_conversation(conv_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # 如果是旧对话且无 mode，尝试从当前请求补齐（幂等）
+    if conv.get("mode") is None:
+        with get_db() as conn:
+            conn.execute("UPDATE conversations SET mode = ? WHERE id = ?", (req.mode, conv_id))
 
     # Store visitor message
     add_message(conv_id, "visitor", req.message)
@@ -254,13 +280,13 @@ async def chat_stream(
     rag_context = ""
     from core.rag.rag_chat import should_use_rag, retrieve_context
     if should_use_rag(req.message):
-        rag_context, _rag_results = await retrieve_context(req.message)
+        rag_context, _rag_results = await retrieve_context(req.message, mode=req.mode)
 
     async def event_generator():
         yield f"data: {json.dumps({'type': 'conv_id', 'conversation_id': conv_id})}\n\n"
 
         full_reply = ""
-        async for chunk in get_response_stream(llm_messages, rag_context=rag_context):
+        async for chunk in get_response_stream(llm_messages, rag_context=rag_context, mode=req.mode):
             full_reply += chunk
             yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
 
@@ -348,18 +374,20 @@ async def chat_agent_stream(
         if m["role"] != "system"
     ]
 
-    # RAG context（用于注入 system prompt）
-    rag_context = ""
-    from core.rag.rag_chat import should_use_rag, retrieve_context
-    if should_use_rag(req.message):
-        rag_context, _ = await retrieve_context(req.message)
+    # RAG 预检索：Agent 端点每次都先检索知识库，无结果时 Agent 会自动通过 web_search 联网
+    from core.rag.rag_chat import retrieve_context
+    rag_context, _ = await retrieve_context(req.message, mode=req.mode)
 
     # Lazy import 避免启动时加载 agent 模块
     from core.agent.engine import AgentEngine
     from core.agent.tools.registry import create_default_registry
 
-    registry = create_default_registry()
-    engine = AgentEngine(registry=registry)
+    registry = create_default_registry(enable_web=req.web_search_enabled)
+    engine = AgentEngine(
+        registry=registry,
+        web_search_enabled=req.web_search_enabled,
+        assistant_mode=req.mode,
+    )
 
     async def agent_event_generator():
         yield f"data: {json.dumps({'type': 'conv_id', 'conversation_id': conv_id})}\n\n"

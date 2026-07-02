@@ -2,15 +2,18 @@ import { HeroSection } from './components/HeroSection';
 import { ExperienceSection } from './components/ExperienceSection';
 import { ProjectsSection } from './components/ProjectsSection';
 import { EducationSection, CertificationsSection, SkillsSection } from './components/MiscSections';
-import { HeaderActions } from './components/HeaderActions';
 import { SidebarNav } from './components/SidebarNav';
 import { FloatingAssistant } from './components/FloatingAssistant';
 import { AuthModal } from './components/AuthModal';
 import { KnowledgeBase } from './components/knowledge/KnowledgeBase';
+import { AdminPage } from './components/admin/AdminPage';
+import { ChatPage } from './components/ChatPage';
+import { GlobalPageHeader } from './components/GlobalPageHeader';
 import { useHashRouter } from './hooks/useHashRouter';
 import { I18nProvider, useI18n } from './i18n';
 import { AuthProvider } from './auth/AuthContext';
 import { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
@@ -47,6 +50,14 @@ const Footer = () => {
   );
 };
 
+// 页面切换动画配置
+const pageTransition = {
+  type: 'spring' as const,
+  stiffness: 260,
+  damping: 30,
+  mass: 0.8,
+};
+
 function AppContent() {
   const [route, navigate] = useHashRouter();
 
@@ -55,69 +66,107 @@ function AppContent() {
     fetch(`${API_BASE}/api/warmup`).catch(() => {});
   }, []);
 
-  // Knowledge base page
-  if (route.page === 'knowledge') {
-    return <KnowledgeBase articleSlug={route.articleSlug} onNavigate={navigate} />;
+  // 推导当前页面 key
+  const currentPage: 'home' | 'chat' | 'knowledge' | 'admin' =
+    route.page === 'chat' ? 'chat'
+    : route.page === 'knowledge' ? 'knowledge'
+    : route.page === 'admin' ? 'admin'
+    : 'home';
+
+  let pageContent;
+  let pageKey: string = currentPage;
+
+  if (route.page === 'chat') {
+    pageKey = 'page-chat';
+    pageContent = <ChatPage onNavigate={navigate} />;
+  } else if (route.page === 'knowledge') {
+    pageKey = `page-knowledge-${route.articleSlug ?? 'list'}`;
+    pageContent = <KnowledgeBase articleSlug={route.articleSlug} onNavigate={navigate} />;
+  } else if (route.page === 'admin') {
+    pageKey = 'page-admin';
+    pageContent = <AdminPage onNavigate={navigate} />;
+  } else {
+    pageKey = 'page-home';
+    pageContent = (
+      <div className="min-h-screen bg-bg-base text-text-primary font-sans antialiased selection:bg-white/20 dot-bg relative">
+        <SidebarNav />
+
+        <a href="#hero" className="sr-only focus:not-sr-only focus:absolute focus:p-4 focus:bg-accent focus:text-bg-base focus:z-50">
+          Skip to content
+        </a>
+
+        {/* Hero — full-width with glow overlay */}
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none hero-glow-1"></div>
+          <div className="absolute inset-0 pointer-events-none hero-glow-2"></div>
+          <div className="max-w-4xl mx-auto px-6 lg:pl-32">
+            <HeroSection />
+          </div>
+        </div>
+
+        {/* Experience — full-width alt background */}
+        <div className="bg-bg-section-alt">
+          <div className="max-w-4xl mx-auto px-6 lg:pl-32">
+            <ExperienceSection />
+          </div>
+        </div>
+
+        {/* Projects — base background */}
+        <div className="max-w-4xl mx-auto px-6 lg:pl-32">
+          <ProjectsSection />
+        </div>
+
+        {/* Education + Certifications — full-width alt background */}
+        <div className="bg-bg-section-alt">
+          <div className="max-w-4xl mx-auto px-6 lg:pl-32">
+            <EducationSection />
+            <CertificationsSection />
+          </div>
+        </div>
+
+        {/* Skills — base background */}
+        <div className="max-w-4xl mx-auto px-6 lg:pl-32">
+          <SkillsSection />
+        </div>
+
+        {/* Contact — full-width alt background */}
+        <div className="bg-bg-section-alt">
+          <div className="max-w-4xl mx-auto px-6 lg:pl-32">
+            <ContactSection />
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-6 lg:pl-32">
+          <Footer />
+        </div>
+
+        <FloatingAssistant />
+      </div>
+    );
   }
 
-  // Portfolio (home) page
   return (
-    <div className="min-h-screen bg-bg-base text-text-primary font-sans antialiased selection:bg-white/20 dot-bg relative">
-      <HeaderActions />
-      <SidebarNav />
+    <>
+      {/* 全局浮动页头：仅主页显示；Chat/Admin/Knowledge 在框线内自行嵌入 */}
+      {currentPage === 'home' && (
+        <GlobalPageHeader currentPage={currentPage} onNavigate={navigate} />
+      )}
 
-      <a href="#hero" className="sr-only focus:not-sr-only focus:absolute focus:p-4 focus:bg-accent focus:text-bg-base focus:z-50">
-        Skip to content
-      </a>
+      {/* 页面切换过渡 */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={pageKey}
+          initial={{ opacity: 0, y: 12, scale: 0.995 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.998 }}
+          transition={pageTransition}
+        >
+          {pageContent}
+        </motion.div>
+      </AnimatePresence>
 
-      {/* Hero — full-width with glow overlay */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none hero-glow-1"></div>
-        <div className="absolute inset-0 pointer-events-none hero-glow-2"></div>
-        <div className="max-w-4xl mx-auto px-6 lg:pl-32">
-          <HeroSection />
-        </div>
-      </div>
-
-      {/* Experience — full-width alt background */}
-      <div className="bg-bg-section-alt">
-        <div className="max-w-4xl mx-auto px-6 lg:pl-32">
-          <ExperienceSection />
-        </div>
-      </div>
-
-      {/* Projects — base background */}
-      <div className="max-w-4xl mx-auto px-6 lg:pl-32">
-        <ProjectsSection />
-      </div>
-
-      {/* Education + Certifications — full-width alt background */}
-      <div className="bg-bg-section-alt">
-        <div className="max-w-4xl mx-auto px-6 lg:pl-32">
-          <EducationSection />
-          <CertificationsSection />
-        </div>
-      </div>
-
-      {/* Skills — base background */}
-      <div className="max-w-4xl mx-auto px-6 lg:pl-32">
-        <SkillsSection />
-      </div>
-
-      {/* Contact — full-width alt background */}
-      <div className="bg-bg-section-alt">
-        <div className="max-w-4xl mx-auto px-6 lg:pl-32">
-          <ContactSection />
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-6 lg:pl-32">
-        <Footer />
-      </div>
-
-      <FloatingAssistant />
       <AuthModal />
-    </div>
+    </>
   );
 }
 

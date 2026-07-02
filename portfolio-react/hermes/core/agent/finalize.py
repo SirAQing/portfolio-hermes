@@ -12,8 +12,20 @@ from typing import AsyncGenerator
 
 import httpx
 
-from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, SYSTEM_PROMPT
+from config import SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT
 from core.agent.events import IterOutcome
+from core.settings_repo import get_setting, SETTING_KEYS, get_llm_config_for_mode, get_system_prompt_for_mode, validate_llm_config
+
+
+def _get_llm_config(mode: str = "visitor"):
+    """获取指定模式LLM配置"""
+    config = get_llm_config_for_mode(mode)
+    validate_llm_config(config)
+    return config
+
+
+def _get_system_prompt(mode: str = "visitor") -> str:
+    return get_system_prompt_for_mode(mode)
 
 
 async def finalize(
@@ -22,33 +34,40 @@ async def finalize(
     context: str = "",
     outcome: IterOutcome = IterOutcome.STOP,
     last_content: str = "",
+    mode: str = "visitor",
 ) -> AsyncGenerator[str, None]:
     """流式生成最终答案。
 
     - STOP: last_content 已是答案，直接 yield（如果非空）；否则流式调用 LLM
     - STUCK/MAX_ITER: 调用 LLM 基于现有 context 生成兜底答案
+    - mode: "visitor" | "demo" — 决定使用哪套助手配置
     """
-    # 1. STOP 且有内容：直接返回
+    # 1. STOP 且有内容：分块流式输出（模拟打字效果）
     if outcome == IterOutcome.STOP and last_content:
-        yield last_content
+        import asyncio
+        chunk_size = 3
+        for i in range(0, len(last_content), chunk_size):
+            yield last_content[i:i + chunk_size]
+            await asyncio.sleep(0.015)
         return
 
     # 2. 其他情况：调用 LLM 流式生成
-    messages = _build_finalize_messages(query, history, context, outcome)
+    messages = _build_finalize_messages(query, history, context, outcome, mode)
+    config = _get_llm_config(mode)
 
     async with httpx.AsyncClient(timeout=120.0, trust_env=False) as client:
         async with client.stream(
             "POST",
-            f"{DEEPSEEK_BASE_URL}/v1/chat/completions",
+            f"{config['base_url']}/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Authorization": f"Bearer {config['api_key']}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": DEEPSEEK_MODEL,
+                "model": config["model"],
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 1024,
+                "max_tokens": 4096,
                 "stream": True,
             },
         ) as resp:
@@ -74,12 +93,14 @@ def _build_finalize_messages(
     history: list[dict],
     context: str,
     outcome: IterOutcome,
+    mode: str = "visitor",
 ) -> list[dict]:
     """构建 finalize 阶段的 LLM messages。"""
     messages: list[dict] = []
 
     # system prompt
-    system_content = SYSTEM_PROMPT
+    system_prompt = _get_system_prompt(mode)
+    system_content = system_prompt
     if context:
         system_content = f"{system_content}\n\n## 知识库参考资料\n\n{context}"
     messages.append({"role": "system", "content": system_content})

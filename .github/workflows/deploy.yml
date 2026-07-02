@@ -1,0 +1,43 @@
+name: Deploy Backend to VPS
+
+# Triggered on push to main, only when backend files change.
+# Frontend is deployed separately by Cloudflare Pages.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'portfolio-react/hermes/**'
+      - 'portfolio-react/docker-compose.prod.yml'
+      - 'portfolio-react/.env'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/hermes  # VPS上的项目目录
+
+            echo ">>> Pulling latest code..."
+            git pull origin main
+
+            echo ">>> Rebuilding and restarting hermes-api..."
+            cd portfolio-react
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+
+            echo ">>> Pruning old images..."
+            docker image prune -af --filter "until=24h"
+
+            echo ">>> Checking health..."
+            sleep 3
+            curl -fsS http://127.0.0.1:8000/api/health && echo " HEALTHY" || echo " UNHEALTHY"

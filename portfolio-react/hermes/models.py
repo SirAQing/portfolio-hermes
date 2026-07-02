@@ -9,25 +9,12 @@ import uuid
 from contextlib import contextmanager
 from config import DATABASE_PATH
 
-try:
-    import sqlite_vec  # type: ignore
-    _HAVE_VEC = True
-except ImportError:
-    _HAVE_VEC = False
-
 
 def get_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
-    if _HAVE_VEC:
-        conn.enable_load_extension(True)
-        try:
-            sqlite_vec.load(conn)
-        except Exception:
-            pass
-        conn.enable_load_extension(False)
     return conn
 
 
@@ -54,7 +41,8 @@ def init_db():
                 summary TEXT,
                 is_urgent INTEGER DEFAULT 0,
                 notified_at REAL DEFAULT 0,
-                message_count INTEGER DEFAULT 0
+                message_count INTEGER DEFAULT 0,
+                mode TEXT DEFAULT 'visitor' CHECK(mode IN ('visitor', 'demo'))
             );
 
             CREATE TABLE IF NOT EXISTS messages (
@@ -144,10 +132,14 @@ def init_db():
                 raw_content TEXT,
                 status TEXT DEFAULT 'pending',
                 embedding_model TEXT,
+                chunk_count INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                error_message TEXT,
+                processed_at TEXT,
                 created_at TEXT DEFAULT (datetime('now'))
             );
 
-            -- chunks 普通表存储元数据和内容（向量存在 vec0 虚拟表）
+            -- chunks 普通表存储元数据和内容（向量存在 Chroma）
             CREATE TABLE IF NOT EXISTS chunks (
                 id TEXT PRIMARY KEY,
                 doc_id TEXT NOT NULL REFERENCES documents(id),
@@ -161,6 +153,41 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_chunks_doc ON chunks(doc_id);
             CREATE INDEX IF NOT EXISTS idx_chunks_kb ON chunks(kb_id);
             CREATE INDEX IF NOT EXISTS idx_docs_kb ON documents(kb_id);
+
+            -- ── 系统配置表 ──
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            -- ── 笔记表（AI OS 管理后台）──
+            CREATE TABLE IF NOT EXISTS notes (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                slug TEXT UNIQUE NOT NULL,
+                content TEXT NOT NULL DEFAULT '',
+                description TEXT DEFAULT '',
+                category TEXT DEFAULT '',
+                status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'published', 'archived')),
+                summary TEXT,
+                ai_notes TEXT,
+                tags TEXT DEFAULT '[]',
+                metadata TEXT DEFAULT '{}',
+                is_kb_synced INTEGER DEFAULT 0,
+                kb_id TEXT,
+                kb_doc_id TEXT,
+                published_at TEXT,
+                view_count INTEGER DEFAULT 0,
+                likes INTEGER DEFAULT 0,
+                created_by TEXT REFERENCES users(id),
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_notes_status ON notes(status);
+            CREATE INDEX IF NOT EXISTS idx_notes_slug ON notes(slug);
+            CREATE INDEX IF NOT EXISTS idx_notes_created_by ON notes(created_by);
         """)
 
         # FTS5 关键词检索（CJK 二元分词由应用层处理，存储时已分词）
@@ -170,27 +197,106 @@ def init_db():
             )"""
         )
 
-        # vec0 向量表按需创建（不同 KB 可能用不同维度），此处创建默认 768 维
-        if _HAVE_VEC:
-            try:
-                conn.execute(
-                    """CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vec USING vec0(
-                        chunk_id TEXT PRIMARY KEY,
-                        embedding FLOAT[768]
-                    )"""
-                )
-            except Exception as e:
-                print(f"[models] vec0 table creation skipped: {e}")
+        # ── Schema 迁移：为旧版 documents 表添加新字段（幂等） ──
+        _migrate_documents_table(conn)
+        _migrate_knowledge_bases_table(conn)
+        _migrate_conversations_table(conn)
+        _migrate_notes_table(conn)
+        _migrate_users_table(conn)
 
 
-def create_conversation(visitor_id: str, visitor_name: str = None) -> str:
+def _migrate_documents_table(conn):
+    """为已存在的 documents 表添加新字段（Phase 5 流水线追踪）。"""
+    # 获取现有列
+    cursor = conn.execute("PRAGMA table_info(documents)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+
+    new_cols = [
+        ("chunk_count", "INTEGER DEFAULT 0"),
+        ("total_tokens", "INTEGER DEFAULT 0"),
+        ("error_message", "TEXT"),
+        ("processed_at", "TEXT"),
+    ]
+    for col_name, col_type in new_cols:
+        if col_name not in existing_cols:
+            conn.execute(f"ALTER TABLE documents ADD COLUMN {col_name} {col_type}")
+
+
+def _migrate_knowledge_bases_table(conn):
+    """为 knowledge_bases 表添加链接字段（支持双助手模式）。"""
+    cursor = conn.execute("PRAGMA table_info(knowledge_bases)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+
+    # 旧字段 is_linked（兼容保留）
+    if "is_linked" not in existing_cols:
+        conn.execute("ALTER TABLE knowledge_bases ADD COLUMN is_linked INTEGER DEFAULT 0")
+
+    # 新字段：双助手独立链接
+    if "linked_for_visitor" not in existing_cols:
+        conn.execute("ALTER TABLE knowledge_bases ADD COLUMN linked_for_visitor INTEGER DEFAULT 0")
+    if "linked_for_demo" not in existing_cols:
+        conn.execute("ALTER TABLE knowledge_bases ADD COLUMN linked_for_demo INTEGER DEFAULT 0")
+
+    # 数据迁移：将旧 is_linked=1 的知识库映射到两个新字段
+    conn.execute(
+        """UPDATE knowledge_bases
+           SET linked_for_visitor = 1, linked_for_demo = 1
+           WHERE is_linked = 1 AND linked_for_visitor = 0 AND linked_for_demo = 0"""
+    )
+
+
+def _migrate_conversations_table(conn):
+    """为 conversations 表新增 mode 字段（支持访客助手 / AI 问答助手区分）。"""
+    cursor = conn.execute("PRAGMA table_info(conversations)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+
+    if "mode" not in existing_cols:
+        conn.execute("ALTER TABLE conversations ADD COLUMN mode TEXT DEFAULT 'visitor' CHECK(mode IN ('visitor', 'demo'))")
+
+
+def _migrate_notes_table(conn):
+    """为 notes 表添加未来可能新增的字段（幂等）。"""
+    cursor = conn.execute("PRAGMA table_info(notes)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+    if not existing_cols:
+        return
+
+    new_cols = [
+        ("metadata", "TEXT DEFAULT '{}'"),
+        ("description", "TEXT DEFAULT ''"),
+        ("category", "TEXT DEFAULT ''"),
+    ]
+    for col_name, col_type in new_cols:
+        if col_name not in existing_cols:
+            conn.execute(f"ALTER TABLE notes ADD COLUMN {col_name} {col_type}")
+
+
+def _migrate_users_table(conn):
+    """为 users 表添加管理后台扩展字段（幂等）。"""
+    cursor = conn.execute("PRAGMA table_info(users)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+    if not existing_cols:
+        return
+
+    new_cols = [
+        ("nickname", "TEXT"),
+        ("phone", "TEXT"),
+        ("admin_notes", "TEXT"),
+        ("metadata", "TEXT DEFAULT '{}'"),
+    ]
+    for col_name, col_type in new_cols:
+        if col_name not in existing_cols:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+
+
+def create_conversation(visitor_id: str, visitor_name: str = None, mode: str = 'visitor') -> str:
     """Create a new conversation and return its ID."""
     conv_id = str(uuid.uuid4())[:8]
     now = time.time()
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO conversations (id, visitor_id, visitor_name, started_at, last_active) VALUES (?, ?, ?, ?, ?)",
-            (conv_id, visitor_id, visitor_name, now, now)
+            "INSERT INTO conversations (id, visitor_id, visitor_name, started_at, last_active, mode) VALUES (?, ?, ?, ?, ?, ?)",
+            (conv_id, visitor_id, visitor_name, now, now, mode)
         )
     return conv_id
 

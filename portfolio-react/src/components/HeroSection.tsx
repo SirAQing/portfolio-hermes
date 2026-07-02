@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, type Variants } from 'framer-motion';
-import { Star, GitFork, BookOpen, MessageSquare, ChevronDown } from 'lucide-react';
+import { Star, GitFork, BookOpen, MessageSquare, ChevronDown, Sparkles } from 'lucide-react';
 import { useI18n } from '../i18n';
 import avatarImg from '../assets/avatar.jpg';
 
@@ -229,6 +229,13 @@ const fadeIn: Variants = {
           icon={MessageSquare} 
           onClick={() => window.dispatchEvent(new CustomEvent('open-chat'))}
         />
+        <a
+          href="#/chat"
+          className="inline-flex items-center gap-2 rounded-full px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-500 transition-all hover:opacity-90 hover:shadow-lg cursor-pointer shadow-[0_4px_12px_-2px_rgba(59,130,246,0.4)]"
+        >
+          <Sparkles size={14} />
+          AI 问答
+        </a>
       </motion.div>
 
       {/* Scroll Guidance Arrow */}

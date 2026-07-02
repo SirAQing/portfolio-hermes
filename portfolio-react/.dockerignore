@@ -1,8 +1,27 @@
 node_modules
 dist
 .git
+.github
+.vscode
+.idea
+
+# Env files (compose injects via env_file at runtime)
 .env
+.env.local
+.env.production
+
+# Local DBs
 hermes/hermes.db
+hermes/hermes-test.db
 hermes/__pycache__
+hermes/.pytest_cache
+hermes/tests
+hermes/conftest.py
+hermes/pytest.ini
+
+# Logs
+*.log
+
+# Docs (keep README only)
 *.md
 !README.md

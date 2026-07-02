@@ -1,11 +1,14 @@
-"""Pytest 全局 fixture — 测试数据库隔离"""
+"""Pytest 全局 fixture — 测试数据库与 Chroma 隔离"""
 import os
 import tempfile
 
-# 在导入任何项目模块前，先设置临时数据库路径
+# 在导入任何项目模块前，先设置临时数据库路径与 Chroma 持久化目录
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 _tmp_db.close()
 os.environ["DATABASE_PATH"] = _tmp_db.name
+
+_tmp_chroma = tempfile.mkdtemp(prefix="chroma_test_")
+os.environ["CHROMA_PERSIST_DIR"] = _tmp_chroma
 
 import pytest
 from models import init_db
@@ -25,7 +28,6 @@ def fresh_db():
             "messages",
             "conversations",
             "chunks_fts",
-            "chunks_vec",
             "chunks",
             "documents",
             "knowledge_bases",
@@ -33,6 +35,7 @@ def fresh_db():
             "guest_quotas",
             "interviewer_invites",
             "users",
+            "notes",
         ]
         for t in tables:
             try:

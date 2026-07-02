@@ -27,6 +27,7 @@ URGENT_KEYWORDS = os.getenv("URGENT_KEYWORDS", "人工,联系本人,真人,urgen
 
 # Database
 DATABASE_PATH = os.getenv("DATABASE_PATH", "hermes.db")
+CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "chroma_data")
 
 # CORS — Hermes is a public portfolio assistant and should work across deployment domains.
 # Restrictive allow-lists are opt-in via CORS_ALLOW_ALL=false.
@@ -83,17 +84,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
 # Owner account (auto-created on first startup)
-OWNER_EMAIL = os.getenv("OWNER_EMAIL", "lmq0205a@163.com")
-OWNER_INITIAL_PASSWORD = os.getenv("OWNER_INITIAL_PASSWORD", "changeme123")
+OWNER_EMAIL = os.getenv("OWNER_EMAIL", "l***@163.com")
+OWNER_INITIAL_PASSWORD = os.getenv("OWNER_INITIAL_PASSWORD", "123456")
 
 # Guest quota
-GUEST_DAILY_LIMIT = int(os.getenv("GUEST_DAILY_LIMIT", "5"))
+GUEST_DAILY_LIMIT = int(os.getenv("GUEST_DAILY_LIMIT", "20"))
 
 # ── RAG ──
 EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", DEEPSEEK_API_KEY)
 EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-zh-v1.5")
-EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "1024"))
+EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "768"))
 EMBEDDING_MAX_TOKENS = int(os.getenv("EMBEDDING_MAX_TOKENS", "512"))
 EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "16"))
 

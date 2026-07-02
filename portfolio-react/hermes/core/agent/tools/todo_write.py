@@ -86,7 +86,3 @@ class TodoWriteTool(Tool):
             )
             parts.append(f"  {status_icon} #{t['index']} ({t['priority']}) {t['content']}")
         return "\n".join(parts)
-
-    def get_todos(self) -> list[dict]:
-        """获取当前任务清单（供外部读取）。"""
-        return list(self._todos)

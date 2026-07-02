@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov
+hermes.db
+hermes-test.db
+*.log
+tests/
+conftest.py
+pytest.ini
+.vscode/
+.idea/

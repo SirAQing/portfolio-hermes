@@ -1,0 +1,30 @@
+# Production compose — VPS backend only (no frontend/nginx).
+# Frontend is served by Cloudflare Pages separately.
+#
+# Usage on VPS:
+#   1. Place .env next to this file
+#   2. docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  hermes-api:
+    build: ./hermes
+    container_name: hermes-api
+    ports:
+      - "${HERMES_PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      - hermes-data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/hermes.db
+      - CORS_ALLOW_ALL=${CORS_ALLOW_ALL:-true}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  hermes-data:

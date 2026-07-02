@@ -8,10 +8,10 @@ from core.agent.tools.todo_write import TodoWriteTool
 def register_builtin_tools(registry: ToolRegistry, enable_web: bool = True) -> None:
     """注册所有内置工具到 registry。
 
-    enable_web: 是否注册 web_search/web_fetch（可配置关闭以避免外部网络调用）
+    联网搜索工具始终注册，enable_web 参数保留用于控制 system prompt 行为指导。
+    Web 搜索始终可用，Agent 根据知识库检索结果自动判断是否需要联网搜索。
     """
     registry.register(KnowledgeSearchTool())
     registry.register(TodoWriteTool())
-    if enable_web:
-        registry.register(WebSearchTool())
-        registry.register(WebFetchTool())
+    registry.register(WebSearchTool())
+    registry.register(WebFetchTool())

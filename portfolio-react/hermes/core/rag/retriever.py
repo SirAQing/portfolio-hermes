@@ -91,6 +91,6 @@ def build_context(results: list[SearchResult], max_chars: int = 4000) -> str:
         snippet = r.content.strip()
         if total + len(snippet) > max_chars:
             break
-        parts.append(f"[{i}] {snippet}")
+        parts.append(f"[知识库片段-{i}] {snippet}")
         total += len(snippet)
     return "\n\n".join(parts)

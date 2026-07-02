@@ -49,8 +49,8 @@ def test_build_context_basic():
     ctx = build_context(results)
     assert "内容A" in ctx
     assert "内容B" in ctx
-    assert "[1]" in ctx
-    assert "[2]" in ctx
+    assert "[知识库片段-1]" in ctx
+    assert "[知识库片段-2]" in ctx
 
 
 def test_build_context_respects_max_chars():
@@ -59,7 +59,7 @@ def test_build_context_respects_max_chars():
         for i in range(100)
     ]
     ctx = build_context(results, max_chars=500)
-    assert len(ctx) <= 600  # 含 [n] 标记，略超
+    assert len(ctx) <= 700  # 含 [知识库片段-n] 标记，略超
 
 
 def test_build_context_empty():

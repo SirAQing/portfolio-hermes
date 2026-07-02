@@ -1,0 +1,78 @@
+# Hermes Agent 预设
+# 参考 WeKnora builtin_agents.yaml，精简为 MVP 所需
+
+builtin_agents:
+  - id: "builtin-quick-answer"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Quick Answer"
+        description: "Knowledge base RAG Q&A for fast answers"
+      zh-CN:
+        name: "快速问答"
+        description: "基于知识库的 RAG 问答，快速准确地回答问题"
+    config:
+      agent_mode: "quick-answer"
+      system_prompt_id: "default_kb"  # from prompts/system_prompt.yaml
+      context_template_id: "default_context"
+      temperature: 0.7
+      max_completion_tokens: 2048
+      web_search_enabled: false
+      multi_turn_enabled: true
+      history_turns: 5
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3
+      enable_rewrite: true
+      fallback_strategy: "model"
+
+  - id: "builtin-smart-reasoning"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Smart Reasoning"
+        description: "ReAct reasoning with multi-step thinking and tool calling"
+      zh-CN:
+        name: "智能推理"
+        description: "ReAct 推理框架，支持多步思考与工具调用"
+    config:
+      agent_mode: "smart-reasoning"
+      system_prompt_id: "rag_agent"  # from prompts/agent_system.yaml
+      temperature: 0.7
+      max_completion_tokens: 2048
+      max_iterations: 20
+      web_search_enabled: true
+      web_search_max_results: 5
+      multi_turn_enabled: true
+      history_turns: 5
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3
+      allowed_tools:
+        - "knowledge_search"
+        - "web_search"
+        - "web_fetch"
+        - "todo_write"
+
+  - id: "builtin-pure-chat"
+    is_builtin: true
+    i18n:
+      default:
+        name: "General Chat"
+        description: "Casual conversation without knowledge base"
+      zh-CN:
+        name: "通用对话"
+        description: "不依赖知识库的通用对话助手"
+    config:
+      agent_mode: "pure-chat"
+      system_prompt_id: "pure_chat"  # from prompts/system_prompt.yaml
+      temperature: 0.7
+      max_completion_tokens: 2048
+      web_search_enabled: false
+      multi_turn_enabled: true
+      history_turns: 5
+      fallback_strategy: "model"

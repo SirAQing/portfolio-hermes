@@ -24,6 +24,7 @@ interface AuthContextValue {
   closeAuthModal: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
+  redeemInvite: (code: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   /** 获取认证 headers，无 token 返回空对象 */
@@ -65,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     refreshUser();
   }, [refreshUser]);
 
-  const authHeaders = useCallback(() => {
+  const authHeaders = useCallback((): Record<string, string> => {
     const token = localStorage.getItem(TOKEN_KEY);
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
@@ -105,6 +106,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await refreshUser();
   };
 
+  const redeemInvite = async (code: string) => {
+    const resp = await fetch(`${API_BASE}/api/auth/interviewer/redeem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || 'Invalid or expired invite code');
+    }
+    const data = await resp.json();
+    persistTokens(data.access_token, data.refresh_token);
+    await refreshUser();
+  };
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
@@ -124,6 +140,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         closeAuthModal,
         login,
         register,
+        redeemInvite,
         logout,
         refreshUser,
         authHeaders,

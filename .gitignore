@@ -23,8 +23,23 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.local
+.env.*.local
 hermes/hermes.db
+hermes/*.db-journal
+hermes/*.db-wal
 __pycache__
 *.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
 .venv/
 .gstack/
+
+# Deployment runtime data
+data/
+chroma_data/
+caddy_data/
+caddy_config/

@@ -46,16 +46,14 @@ async def test_todo_write_replaces_existing():
     await tool.execute(todos=[
         {"content": "Old task", "status": "pending", "priority": "high"},
     ])
-    assert len(tool.get_todos()) == 1
 
-    await tool.execute(todos=[
+    result = await tool.execute(todos=[
         {"content": "New task 1", "status": "pending", "priority": "high"},
         {"content": "New task 2", "status": "pending", "priority": "medium"},
     ])
-    assert len(tool.get_todos()) == 2
-    contents = [t["content"] for t in tool.get_todos()]
-    assert "Old task" not in contents
-    assert "New task 1" in contents
+    assert "New task 1" in result
+    assert "New task 2" in result
+    assert "Old task" not in result
 
 
 @pytest.mark.asyncio
@@ -67,7 +65,6 @@ async def test_todo_write_empty_list():
     ])
     result = await tool.execute(todos=[])
     assert "cleared" in result.lower()
-    assert len(tool.get_todos()) == 0
 
 
 @pytest.mark.asyncio
@@ -82,31 +79,30 @@ async def test_todo_write_invalid_input():
 async def test_todo_write_missing_content_skipped():
     """缺少 content 的项被跳过"""
     tool = TodoWriteTool()
-    await tool.execute(todos=[
+    result = await tool.execute(todos=[
         {"content": "Valid", "status": "pending", "priority": "high"},
         {"status": "pending", "priority": "medium"},  # 无 content
         {"content": "  ", "status": "pending", "priority": "medium"},  # 空 content
     ])
-    assert len(tool.get_todos()) == 1
+    assert result.count("#") == 1  # 只有一条任务被渲染
+    assert "Valid" in result
 
 
 @pytest.mark.asyncio
 async def test_todo_write_default_status():
     """缺省状态为 pending"""
     tool = TodoWriteTool()
-    await tool.execute(todos=[
+    result = await tool.execute(todos=[
         {"content": "Task", "priority": "high"},  # 无 status
     ])
-    todos = tool.get_todos()
-    assert todos[0]["status"] == "pending"
+    assert "[ ]" in result  # pending 图标
 
 
 @pytest.mark.asyncio
 async def test_todo_write_default_priority():
     """缺省优先级为 medium"""
     tool = TodoWriteTool()
-    await tool.execute(todos=[
+    result = await tool.execute(todos=[
         {"content": "Task", "status": "pending"},  # 无 priority
     ])
-    todos = tool.get_todos()
-    assert todos[0]["priority"] == "medium"
+    assert "(medium)" in result

@@ -1,19 +1,34 @@
 import { useState, useEffect } from 'react';
 
 export interface HashRoute {
-  page: string;       // 'home' | 'knowledge'
-  articleSlug?: string; // e.g. 'vibe-coding-fullstack'
+  page: string;       // 'home' | 'knowledge' | 'admin'
+  articleSlug?: string; // e.g. 'dify-五大应用类型开发实操方法集'
+}
+
+function safeDecodeURIComponent(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
 }
 
 function parseHash(): HashRoute {
   const hash = window.location.hash.replace(/^#\/?/, '');
-  const parts = hash.split('/').filter(Boolean);
+  const parts = hash.split('/').filter(Boolean).map(safeDecodeURIComponent);
 
+  if (parts[0] === 'chat') {
+    return { page: 'chat' };
+  }
   if (parts[0] === 'knowledge' && parts[1]) {
     return { page: 'knowledge', articleSlug: parts[1] };
   }
   if (parts[0] === 'knowledge') {
+    // 不指定默认文章，由 KnowledgeBase 从后端取第一篇已发布笔记
     return { page: 'knowledge' };
+  }
+  if (parts[0] === 'admin') {
+    return { page: 'admin' };
   }
   return { page: 'home' };
 }

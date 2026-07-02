@@ -1,20 +1,26 @@
-"""Think 阶段 — LLM function calling
+"""Think 阶段 — LLM function calling（流式）
 
 参考 WeKnora internal/agent/think.go
 
 职责:
-    1. 调用 LLM，传入 system prompt + history + tools schema
+    1. 流式调用 LLM，逐字输出思考内容
     2. 解析返回的 tool_calls（如有）
-    3. 支持流式输出思考内容
-    4. 失败重试（max 2 次）
+    3. 失败重试（max 2 次）
 """
 import json
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import httpx
 
-from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+
+from core.settings_repo import get_setting, SETTING_KEYS, get_llm_config_for_mode, get_system_prompt_for_mode, validate_llm_config
+
+
+def _get_llm_config(mode: str = "visitor"):
+    config = get_llm_config_for_mode(mode)
+    validate_llm_config(config)
+    return config
 
 
 @dataclass
@@ -62,27 +68,32 @@ def _build_think_messages(
     return messages
 
 
-async def think(
+async def think_stream(
     query: str,
     history: list[dict],
     tools_schema: list[dict] | None = None,
     context: str = "",
     max_retries: int = 2,
-) -> ThinkResult:
-    """调用 LLM，可能返回 tool_calls。
+    mode: str = "visitor",
+) -> AsyncGenerator[dict, None]:
+    """流式调用 LLM，逐字 yield 思考内容，最后 yield 完整结果。
 
-    tools_schema: OpenAI function calling 格式
-        [{"type": "function", "function": {...}}]
+    yield 格式:
+        {"type": "chunk", "content": "思考片段"}  — 逐字思考内容
+        {"type": "result", "result": ThinkResult}  — 最终完整结果
 
     失败重试 max_retries 次。
+    mode: "visitor" | "demo" — 决定使用哪套助手配置
     """
     messages = _build_think_messages(query, history, context)
+    config = _get_llm_config(mode)
 
     payload: dict[str, Any] = {
-        "model": DEEPSEEK_MODEL,
+        "model": config["model"],
         "messages": messages,
         "temperature": 0.5,
-        "max_tokens": 1024,
+        "max_tokens": 4096,
+        "stream": True,
     }
     if tools_schema:
         payload["tools"] = [
@@ -91,50 +102,117 @@ async def think(
         payload["tool_choice"] = "auto"
 
     headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Authorization": f"Bearer {config['api_key']}",
         "Content-Type": "application/json",
     }
 
     last_err: Exception | None = None
     for attempt in range(max_retries + 1):
         try:
-            async with httpx.AsyncClient(timeout=60.0, trust_env=False) as client:
-                resp = await client.post(
-                    f"{DEEPSEEK_BASE_URL}/v1/chat/completions",
+            # 累积变量
+            full_content = ""
+            full_reasoning = ""
+            tool_calls_map: dict[int, dict] = {}  # {index: {"id":..., "name":..., "arguments":...}}
+            finish_reason = "stop"
+            usage: dict = {}
+
+            async with httpx.AsyncClient(timeout=120.0, trust_env=False) as client:
+                async with client.stream(
+                    "POST",
+                    f"{config['base_url']}/v1/chat/completions",
                     headers=headers,
                     json=payload,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+                ) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        payload_str = line[6:]
+                        if payload_str.strip() == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(payload_str)
+                            choice = chunk["choices"][0]
+                            delta = choice.get("delta", {})
 
-            choice = data["choices"][0]
-            message = choice["message"]
-            content = message.get("content") or ""
-            tool_calls_raw = message.get("tool_calls") or []
+                            # content 片段 — 累积但不 yield（避免正文泄露到思考过程）
+                            content = delta.get("content", "")
+                            if content:
+                                full_content += content
 
-            # 解析 tool_calls
+                            # reasoning_content 片段（DeepSeek 思考过程）— 逐字 yield 为 think 事件
+                            reasoning = delta.get("reasoning_content", "")
+                            if reasoning:
+                                full_reasoning += reasoning
+                                yield {"type": "chunk", "content": reasoning}
+
+                            # tool_calls 分片累积
+                            tool_calls_delta = delta.get("tool_calls", [])
+                            for tc in tool_calls_delta:
+                                idx = tc.get("index", 0)
+                                if idx not in tool_calls_map:
+                                    tool_calls_map[idx] = {"id": "", "name": "", "arguments": ""}
+                                fn = tc.get("function", {})
+                                if "name" in fn:
+                                    tool_calls_map[idx]["name"] = fn["name"]
+                                if "arguments" in fn:
+                                    tool_calls_map[idx]["arguments"] += fn["arguments"]
+                                if "id" in tc:
+                                    tool_calls_map[idx]["id"] = tc["id"]
+
+                            if choice.get("finish_reason"):
+                                finish_reason = choice["finish_reason"]
+
+                            if chunk.get("usage"):
+                                usage = chunk["usage"]
+                        except (json.JSONDecodeError, KeyError, IndexError):
+                            continue
+
+            # 解析最终 tool_calls
             tool_calls: list[dict] = []
-            for tc in tool_calls_raw:
-                fn = tc.get("function", {})
-                name = fn.get("name", "")
-                args_str = fn.get("arguments", "{}")
+            for idx in sorted(tool_calls_map.keys()):
+                tc = tool_calls_map[idx]
+                args_str = tc["arguments"]
                 try:
-                    args = json.loads(args_str) if isinstance(args_str, str) else args_str
+                    args = json.loads(args_str) if args_str else {}
                 except json.JSONDecodeError:
                     args = {}
-                if name:
-                    tool_calls.append({"name": name, "arguments": args})
+                if tc["name"]:
+                    tool_calls.append({"name": tc["name"], "arguments": args})
 
-            usage = data.get("usage", {})
+            # 构造 ThinkResult.content：
+            # - 无 tool_calls 时：content 是最终答案，必须完整保留给 finalize 输出
+            # - 有 tool_calls 时：content 是思考过程；如果模型没给 reasoning_content，就把 content 当作思考过程补发
+            think_content = ""
+            if tool_calls:
+                if full_reasoning:
+                    think_content = full_reasoning
+                elif full_content:
+                    # 有工具调用时，content 视为思考过程，需要补发给前端
+                    think_content = full_content
+                    # 将 content 作为 think chunk 补发
+                    for i in range(0, len(full_content), 4):
+                        yield {"type": "chunk", "content": full_content[i:i+4]}
+                else:
+                    tool_names = [tc["name"] for tc in tool_calls]
+                    think_content = f"正在检索信息：{', '.join(tool_names)}"
+                    yield {"type": "chunk", "content": think_content}
+            else:
+                # 没有 tool_calls：content 就是最终答案，不要作为 think 输出
+                think_content = full_content or full_reasoning
+
             tokens_used = usage.get("total_tokens", 0)
 
-            return ThinkResult(
-                content=content,
+            result = ThinkResult(
+                content=think_content,
                 tool_calls=tool_calls,
-                finish_reason=choice.get("finish_reason", "stop"),
+                finish_reason=finish_reason,
                 tokens_used=tokens_used,
-                raw=data,
+                raw=None,
             )
+            yield {"type": "result", "result": result}
+            return
+
         except Exception as e:
             last_err = e
             if attempt < max_retries:

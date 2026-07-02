@@ -1,0 +1,9 @@
+api.liumingqing.com {
+    reverse_proxy hermes:8000
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}
