@@ -1,0 +1,18 @@
+name: Health Monitor
+
+# Periodic health check for the VPS backend.
+# Auto-deploy on push handles restarts; this catches silent failures.
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: |
+          curl -fsS -o /dev/null -w "HTTP %{http_code} — %{time_total}s\n" \
+            https://liumingqing.com/api/health || true

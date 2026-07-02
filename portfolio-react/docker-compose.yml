@@ -1,0 +1,39 @@
+services:
+  # Hermes API backend (FastAPI + sqlite-vec RAG)
+  hermes-api:
+    build: ./hermes
+    container_name: hermes-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - hermes-data:/app/data
+    environment:
+      # Override DATABASE_PATH so the SQLite file lives in the mounted volume
+      - DATABASE_PATH=/app/data/hermes.db
+      # Default to allow-all CORS; set CORS_ALLOW_ALL=false + CORS_ORIGINS in .env to lock down
+      - CORS_ALLOW_ALL=${CORS_ALLOW_ALL:-true}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+  # Portfolio frontend (Vite build → nginx static serve)
+  portfolio:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: portfolio-web
+    ports:
+      - "80:80"
+    depends_on:
+      hermes-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  hermes-data:
