@@ -41,7 +41,7 @@ class WebSearchTool(Tool):
     async def execute(self, query: str, max_results: int = 5, **kwargs) -> str:
         """执行网页搜索（Bing CN HTML 解析）。"""
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
                 resp = await client.get(
                     "https://cn.bing.com/search",
                     params={"q": query},
