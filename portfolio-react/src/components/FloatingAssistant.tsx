@@ -312,30 +312,11 @@ export const FloatingAssistant = () => {
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [convId, setConvId] = useState<string | null>(null);
-  const [loadingStage, setLoadingStage] = useState(0);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const { t, lang } = useI18n();
   const { user, authHeaders, openAuthModal, refreshUser } = useAuth();
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const LOADING_HINTS = [
-    '',
-    t('chat.connecting'),
-    t('chat.warming'),
-  ];
-
-  const clearLoadingTimer = () => {
-    if (loadingTimerRef.current) {
-      clearTimeout(loadingTimerRef.current);
-      loadingTimerRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => clearLoadingTimer();
-  }, []);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -375,15 +356,6 @@ export const FloatingAssistant = () => {
 
     setInputValue('');
     setIsSending(true);
-    setLoadingStage(0);
-    clearLoadingTimer();
-
-    loadingTimerRef.current = setTimeout(() => {
-      setLoadingStage(1);
-      loadingTimerRef.current = setTimeout(() => {
-        setLoadingStage(2);
-      }, 3000);
-    }, 2000);
 
     const newMessages: Message[] = [...messages, { role: 'user', content: text }];
     setMessages(newMessages);
@@ -408,7 +380,6 @@ export const FloatingAssistant = () => {
       });
 
       if (resp.status === 403) {
-        clearLoadingTimer();
         setMessages(prev => {
           return prev.map((m, i) => i === aiMsgIndex ? {
             role: 'ai',
@@ -446,8 +417,6 @@ export const FloatingAssistant = () => {
               setConvId(data.conversation_id);
             } else if (data.type === 'think') {
               // 思考过程事件（流式逐字输出）
-              clearLoadingTimer();
-              setLoadingStage(0);
               setMessages(prev => {
                 const msg = prev[aiMsgIndex];
                 const subEvents = [...(msg.subEvents || [])];
@@ -500,8 +469,6 @@ export const FloatingAssistant = () => {
                 return prev.map((m, i) => i === aiMsgIndex ? { ...m, subEvents: newSubEvents } : m);
               });
             } else if (data.type === 'chunk') {
-              clearLoadingTimer();
-              setLoadingStage(0);
               fullReply += data.content;
               setMessages(prev => {
                 return prev.map((m, i) => i === aiMsgIndex ? { ...m, content: fullReply, streaming: true } : m);
@@ -512,7 +479,6 @@ export const FloatingAssistant = () => {
               });
               refreshUser();
             } else if (data.type === 'error') {
-              clearLoadingTimer();
               setMessages(prev => {
                 return prev.map((m, i) => i === aiMsgIndex ? {
                   role: 'ai',
@@ -536,8 +502,6 @@ export const FloatingAssistant = () => {
         return prev.map((m, i) => i === aiMsgIndex ? { role: 'ai', content: errorMsg, streaming: false } : m);
       });
     } finally {
-      clearLoadingTimer();
-      setLoadingStage(0);
       setIsSending(false);
     }
   };
@@ -579,17 +543,10 @@ export const FloatingAssistant = () => {
                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[88%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-br-none shadow-[0_4px_12px_-4px_rgba(59,130,246,0.4)]' : 'bg-bg-pill border border-border text-text-primary rounded-tl-none'}`}>
                     {msg.streaming && !msg.content && (!msg.subEvents || msg.subEvents.length === 0) ? (
-                      <span className="flex flex-col items-start gap-1.5">
-                        <span className="flex items-center gap-1 text-text-muted">
-                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                        </span>
-                        {loadingStage > 0 && (
-                          <span className="text-[11px] text-text-muted/60 animate-pulse">
-                            {LOADING_HINTS[loadingStage]}
-                          </span>
-                        )}
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                       </span>
                     ) : (
                       <>

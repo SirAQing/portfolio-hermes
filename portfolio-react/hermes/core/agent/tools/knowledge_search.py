@@ -6,7 +6,26 @@ from core.rag.retriever import hybrid_search, build_context
 from core.rag.rag_chat import get_active_kb_ids
 
 
-RAG_CONFIDENCE_THRESHOLD = 0.3
+RAG_CONFIDENCE_THRESHOLD = 0.05
+
+
+def _expand_query(query: str) -> str:
+    """对宽泛查询做语义扩展，提升知识库召回率。"""
+    q = query.strip()
+    # 避免对已经完整的问题重复追加
+    if "刘明青" in q or len(q) > 12:
+        return q
+    expansions = {
+        "技术栈": "刘明青 技术栈 技能 编程语言 框架 工具",
+        "项目": "刘明青 项目 作品 经验 代表作",
+        "经历": "刘明青 工作经历 职业 履历",
+        "技能": "刘明青 技能 技术栈 能力",
+        "联系方式": "刘明青 联系方式 邮箱 X",
+    }
+    for key, expansion in expansions.items():
+        if key in q:
+            return expansion
+    return f"刘明青 {q}"
 
 
 class KnowledgeSearchTool(Tool):
@@ -46,13 +65,17 @@ class KnowledgeSearchTool(Tool):
         if not kb_ids:
             return "[NO_KNOWLEDGE_BASE] 没有配置任何知识库。请直接使用 web_search 搜索互联网获取信息。"
 
+        expanded_query = _expand_query(query)
+        if expanded_query != query:
+            print(f"[KnowledgeSearchTool] query expanded: '{query}' -> '{expanded_query}'")
+
         from core.rag.embedder import get_default_embedder
         embedder = get_default_embedder()
 
         all_results = []
         for kid in kb_ids:
             try:
-                results = await hybrid_search(query=query, kb_id=kid, embedder=embedder)
+                results = await hybrid_search(query=expanded_query, kb_id=kid, embedder=embedder)
                 all_results.extend(results)
             except Exception as e:
                 print(f"[KnowledgeSearchTool] search failed for kb {kid}: {e}")

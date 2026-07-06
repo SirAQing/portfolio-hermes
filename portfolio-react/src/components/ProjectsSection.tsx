@@ -146,7 +146,7 @@ export const ProjectsSection = () => {
       status: t('proj.status.live'),
       description: t('proj.portfolio.desc'),
       tags: ["React", "TypeScript", "Vite", "Tailwind CSS", "FastAPI", "SQLite", "SSE"],
-      link: "github.com/SirAQing/minimalist-portfolio",
+      link: "github.com/SirAQing/portfolio-hermes",
       onOpen: () => {},
     },
     {

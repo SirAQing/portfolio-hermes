@@ -62,8 +62,13 @@ function AppContent() {
   const [route, navigate] = useHashRouter();
 
   // Pre-warm the backend on first page load so AI chat is responsive
+  // AuthContext 的 /api/auth/warmup 已覆盖预热，此处不再重复调用
   useEffect(() => {
-    fetch(`${API_BASE}/api/warmup`).catch(() => {});
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    fetch(`${API_BASE}/api/warmup`, { signal: controller.signal })
+      .catch(() => {});
+    return () => { clearTimeout(timer); controller.abort(); };
   }, []);
 
   // 推导当前页面 key

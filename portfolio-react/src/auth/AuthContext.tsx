@@ -51,7 +51,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ? { Authorization: `Bearer ${token}` }
       : {};
     try {
-      const resp = await fetch(`${API_BASE}/api/auth/warmup`, { headers });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const resp = await fetch(`${API_BASE}/api/auth/warmup`, {
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
       if (!resp.ok) throw new Error('warmup failed');
       const data = await resp.json();
       setUser(data);

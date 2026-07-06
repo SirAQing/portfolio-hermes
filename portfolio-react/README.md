@@ -2,7 +2,7 @@
 
 A modern, bilingual portfolio website with a **ReAct Agent** chat assistant, **RAG knowledge base** with admin CMS, and project showcase &mdash; built to demonstrate AI-native full-stack development in action.
 
-**Live**: [liumingqing.com](https://liumingqing.com) &ensp;|&ensp; **Open Source**: [GitHub](https://github.com/SirAQing/minimalist-portfolio)
+**Live**: [liumingqing.com](https://liumingqing.com) &ensp;|&ensp; **Open Source**: [GitHub](https://github.com/SirAQing/portfolio-hermes)
 
 ![image-20260621210958851](C:\Users\大青\AppData\Roaming\Typora\typora-user-images\image-20260621210958851.png)
 
@@ -134,8 +134,8 @@ graph TD
 
 ```bash
 # 1. Clone
-git clone https://github.com/SirAQing/minimalist-portfolio.git
-cd minimalist-portfolio/portfolio-react
+git clone https://github.com/SirAQing/portfolio-hermes.git
+cd portfolio-hermes/portfolio-react
 
 # 2. Configure
 cp .env.example .env
@@ -164,8 +164,8 @@ docker compose down -v
 
 ```bash
 # 1. Clone
-git clone https://github.com/SirAQing/minimalist-portfolio.git
-cd minimalist-portfolio/portfolio-react
+git clone https://github.com/SirAQing/portfolio-hermes.git
+cd portfolio-hermes/portfolio-react
 
 # 2. Frontend
 npm install

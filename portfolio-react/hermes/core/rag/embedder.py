@@ -58,14 +58,23 @@ class OpenAICompatibleEmbedder(Embedder):
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
         if not texts:
             return []
+        import tiktoken
+
+        enc = tiktoken.get_encoding("cl100k_base")
         results: list[list[float]] = []
         async with httpx.AsyncClient(timeout=60.0) as client:
             for i in range(0, len(texts), self._batch_size):
                 batch = list(texts[i : i + self._batch_size])
+                # 清理 Markdown 链接 URL、多余空白，再按最大 token 数截断，避免服务商 400
+                import re
+
+                cleaned = [re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t) for t in batch]
+                cleaned = [re.sub(r"\s+", " ", t).strip() for t in cleaned]
+                truncated = [enc.decode(enc.encode(t)[: self._max_tokens]) for t in cleaned]
                 resp = await client.post(
                     f"{self.base_url}/embeddings",
                     headers={"Authorization": f"Bearer {self.api_key}"},
-                    json={"model": self._model, "input": batch},
+                    json={"model": self._model, "input": truncated},
                 )
                 resp.raise_for_status()
                 data = resp.json()

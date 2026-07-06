@@ -11,7 +11,7 @@ A bilingual (EN/ZH) portfolio website — React 19, Vite 8, TypeScript 6, Tailwi
 All run from `portfolio-react/`:
 
 ```bash
-npm run dev       # Vite dev server → localhost:8080 (proxies /api → localhost:8000)
+npm run dev       # Vite dev server → 127.0.0.1:8080 (proxies /api → localhost:8000)
 npm run build     # tsc -b && vite build
 npm run lint      # ESLint
 npm run preview   # Preview production build
@@ -79,13 +79,22 @@ Two frontend surfaces:
 All endpoints accept `mode` parameter: `"visitor"` (FloatingAssistant, conservative) or `"demo"` (ChatPage, full-featured).
 
 Stream protocol: `data: {"type":"conv_id"|"chunk"|"done", ...}` JSON lines.
+Agent SSE event types: `think` | `tool_call` | `tool_result` | `chunk` | `done` | `error` | `iter`.
 
 Key backend files:
-- `main.py` — FastAPI entry point, all endpoints, lifespan (DB init + summary loop)
+- `main.py` — FastAPI entry point, all endpoints, lifespan (DB init + summary loop + LLM config validation)
 - `config.py` — Env-driven config (API keys, CORS, JWT, RAG params, guest quota, SYSTEM_PROMPT)
 - `llm.py` — DeepSeek API calls (streaming + non-streaming), multi-mode support
 - `models.py` — SQLite schema (conversations, messages, users, KB tables, system_settings)
 - `notify.py` — Feishu webhook + PushPlus (WeChat) real-time push + scheduled summaries
+
+### Utility Endpoints
+
+- `GET /` — Health check (`{"status": "ok"}`)
+- `GET /api/health` — Health check (`{"status": "ok"}`)
+- `GET /api/warmup` — Cold-start mitigation: touches DB, returns latency. Called by frontend on page load.
+- `POST /api/notify/test` — Fire test notification to Feishu + PushPlus
+- `GET /api/agent/tools` — List available agent tools with name/description/parameters schema
 
 **CORS**: Defaults to allow-all (`CORS_ALLOW_ALL=true`). To restrict, set `CORS_ALLOW_ALL=false` and `CORS_ORIGINS=comma,separated,origins`.
 
@@ -162,11 +171,9 @@ upload → pending → parsing → chunking → embedding → ready
 `hermes/config_files/` — no prompts hardcoded in Python:
 
 - `config.yaml` — Runtime parameters (chunk sizes, RAG weights, agent limits, guest quota)
-- `agents.yaml` — Agent preset definitions
-- `prompts/` — YAML prompt templates:
-  - `agent_system.yaml` — ReAct agent system prompt (rag/pure modes)
-  - `system_prompt.yaml` — Chat system prompt with context template
-  - `fallback.yaml` / `rewrite.yaml` / `generate_summary.yaml` — Various prompt templates
+- `agents.yaml` — 3 builtin agent presets (Quick Answer / Smart Reasoning / General Chat)
+- `prompts/agent_system.yaml` — ReAct agent system prompt templates (pure + rag modes)
+- Other prompt IDs referenced in config (fallback, rewrite, summary, etc.) resolve to built-in defaults if no YAML file is present for them
 
 `hermes/core/config/` loaders: `config_loader.py`, `prompt_loader.py`, `agents_loader.py` provide typed access. Templates use `{{variable}}` syntax rendered at runtime.
 
@@ -202,6 +209,7 @@ Two-layer content system: **backend notes** (CRUD + publish) and **static manife
 - `POST /api/admin/notes/{id}/publish` — Set status to published
 - `POST /api/admin/notes/{id}/ai-annotate` — AI generates summary, notes, tags
 - `POST /api/admin/notes/{id}/sync-to-kb` — Push note content to RAG knowledge base
+- `POST /api/admin/notes/fetch-url` — Fetch and parse article from external URL
 
 ### Public Notes Reader (`#/knowledge`)
 
@@ -225,7 +233,7 @@ Two-layer content system: **backend notes** (CRUD + publish) and **static manife
    - Center: Title + status + category/tags/description fields + Markdown editor + live preview toggle + **Import .md** button
    - Right: AI panel (summary, AI notes, suggested tags) + action buttons (AI Annotate, Publish, Sync to KB)
 4. **📚 Knowledge Base** (`KBManagement.tsx`) — KB CRUD, document upload (drag & drop or URL, batch up to 20), pipeline status, retrieval test
-5. **⚙️ AI Settings** — Per-mode model/prompt/temperature config (visitor/demo), stored in `system_settings` table, editable at runtime
+5. **⚙️ AI Settings** — Per-mode model/prompt/temperature config (visitor/demo), stored in `system_settings` table, editable at runtime. Implemented inline within `AdminPage.tsx` (no separate file).
 
 ### Project Cards & Modal
 
@@ -255,8 +263,9 @@ App
 └── I18nProvider
     └── AuthProvider
         └── AppContent
+            ├── [all pages]
+            │   └── GlobalPageHeader (fixed top-right: theme, lang, page nav tabs, admin entry for owner)
             ├── [home]
-            │   ├── HeaderActions (fixed top-right: theme, lang, KB link, admin entry for owner)
             │   ├── SidebarNav (scroll-spy, left side, hidden when hero visible)
             │   ├── HeroSection (TypewriterText + stats + story + CTAs)
             │   ├── ExperienceSection (skill tags grid + timeline cards)
@@ -275,11 +284,11 @@ App
                     ├── UserManagementTab (user CRUD, role/status, password reset)
                     ├── NotesManagementTab (Markdown editor + AI annotations + KB sync + .md import)
                     ├── KBManagement (KB CRUD + document upload + pipeline + retrieval test)
-                    └── AISettingsTab (per-mode model/prompt/temperature config)
+                    └── AISettings (inline, per-mode model/prompt/temperature config)
             └── AuthModal (login/register dialog, triggered by AuthContext)
 ```
 
-`HeaderActions` is rendered on **every page** (home, chat, article list, article reader, admin, 404) at the same fixed position. It conditionally shows an "Admin" link when the logged-in user has the `owner` role.
+`GlobalPageHeader` is rendered on **every page** (home, chat, article list, article reader, admin, 404) at the same fixed position. It uses `PageHeaderTabs` for page navigation and conditionally shows an "Admin" link when the logged-in user has the `owner` role.
 
 ## Environment Variables
 
@@ -311,5 +320,5 @@ All in `.env` (copy from `.env.example`). Key variables:
 - **Theme tokens**: `:root` / `:root.dark` in `src/index.css`
 - **Changing AI personality/contact**: `SYSTEM_PROMPT` in `hermes/config.py` or `agent_system.yaml`
 - **Changing model/prompt at runtime**: Admin API writes to `system_settings` table via `settings_repo.py`; no restart needed. Mode-specific keys (`VISITOR_*` / `DEMO_*`) override global defaults
-- **Dev server port**: Vite runs on `localhost:8080` (configured in `vite.config.ts`), not the default 5173
-- **Tests use MockEmbedder**: `conftest.py` provides `MockEmbedder` to avoid hitting real embedding APIs
+- **Dev server**: Vite runs on `127.0.0.1:8080` (configured in `vite.config.ts`), not the default 5173. Vite proxies `/api/*` → `localhost:8000`.
+- **Tests use MockEmbedder**: `conftest.py` provides `MockEmbedder` to avoid hitting real embedding APIs. Each test run uses a temporary SQLite database with an `autouse` fixture that wipes tables between tests.

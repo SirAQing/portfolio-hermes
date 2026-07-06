@@ -4,7 +4,7 @@
 >
 > A full-stack portfolio that demonstrates **AI engineering in production** &mdash; featuring a ReAct agent engine, a retrieval-augmented generation (RAG) pipeline, JWT + RBAC auth, and a knowledge base CMS, all built with React 19 + FastAPI.
 
-**Live**: [liumingqing.com](https://liumingqing.com) &ensp;|&ensp; **Source**: [GitHub](https://github.com/SirAQing/minimalist-portfolio) &ensp;|&ensp; **License**: MIT
+**Live**: [liumingqing.com](https://liumingqing.com) &ensp;|&ensp; **Source**: [GitHub](https://github.com/SirAQing/portfolio-hermes) &ensp;|&ensp; **License**: MIT
 
 <!-- TODO: Replace with a hosted screenshot URL (e.g. GitHub raw, imgur, or docs/assets/screenshot.png committed to the repo) -->
 ![Portfolio Screenshot](docs/screenshot.png)
@@ -316,8 +316,8 @@ hermes/config_files/
 
 ```bash
 # 1. Clone
-git clone https://github.com/SirAQing/minimalist-portfolio.git
-cd minimalist-portfolio/portfolio-react
+git clone https://github.com/SirAQing/portfolio-hermes.git
+cd portfolio-hermes/portfolio-react
 
 # 2. Frontend setup
 npm install
@@ -356,7 +356,7 @@ Docker Compose orchestrates two services: `portfolio` (nginx serving the built R
 ## Project Structure / 项目结构
 
 ```
-minimalist-portfolio/
+portfolio-hermes/
 ├── portfolio-react/                # Main application root
 │   ├── src/                        # ── Frontend (React 19 + TypeScript) ──
 │   │   ├── main.tsx                # Entry point
