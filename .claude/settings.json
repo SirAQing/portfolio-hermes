@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls ~/.claude/ 2>/dev/null)",
+      "Read(//c/Users/大青/.claude/**)",
+      "Bash(ls \"D:/claudecode/node_modules/@fission-ai/openspec/\" 2>/dev/null || echo \"Directory does not exist\")",
+      "Read(//d/claudecode/node_modules/@fission-ai/**)",
+      "Bash(npm list *)",
+      "Bash(ls \"D:/claudecode/\" 2>/dev/null | head -30)",
+      "Read(//d/claudecode/**)",
+      "Bash(openspec --version)",
+      "Bash(cat \"D:/claudecode/openspec.cmd\" 2>/dev/null)",
+      "Bash(ls \"D:/claudecode/openspec/\" 2>/dev/null)",
+      "Bash(cat \"D:/claudecode/package.json\" 2>/dev/null)",
+      "Bash(npm install *)"
+    ]
+  }
+}
