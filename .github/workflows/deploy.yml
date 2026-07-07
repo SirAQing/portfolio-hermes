@@ -10,7 +10,6 @@ on:
     paths:
       - 'portfolio-react/hermes/**'
       - 'portfolio-react/docker-compose.prod.yml'
-      - 'portfolio-react/.env'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -26,13 +25,14 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             set -e
-            cd /opt/hermes  # VPS上的项目目录
+            cd /opt/hermes
 
             echo ">>> Pulling latest code..."
             git pull origin main
 
             echo ">>> Rebuilding and restarting hermes-api..."
             cd portfolio-react
+            # .env is preserved via .gitignore, will not be overwritten by git pull
             docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 
             echo ">>> Pruning old images..."
