@@ -25,8 +25,12 @@ pytest                          # Run all tests
 pytest tests/test_agent_act.py  # Single test file
 pytest -k "test_rrf"            # Run tests matching keyword
 
-# Docker Compose (production)
-docker compose up -d --build   # frontend :80 + hermes-api :8000
+# Docker Compose — local dev
+docker compose -f docker-compose.yml up -d    # hermes-api :8000 + nginx :80
+
+# Docker Compose — production (from repo root)
+cp .env.example .env
+docker compose up -d --build                  # hermes :8000 + Caddy :80
 ```
 
 ## Architecture
@@ -179,17 +183,20 @@ upload → pending → parsing → chunking → embedding → ready
 
 **Env vars still take precedence** for secrets and deployment-specific values (API keys, CORS, JWT secret). The YAML config is for tunable parameters and prompts.
 
-### Docker & nginx
+### Docker & Caddy (Production)
 
-`docker-compose.yml` — two services:
-- `hermes-api` — FastAPI backend, port 8000, healthcheck via `curl /api/health`, persistent volume `hermes-data:/app/data`
-- `portfolio` — Multi-stage build (`Dockerfile.frontend`): Node build → nginx serve, port 80, depends on hermes-api healthy
+Two compose files and a Caddy reverse proxy:
 
-`nginx.conf` — key behaviors:
-- `/api/` → reverse proxy to `hermes-api:8000` with `proxy_buffering off` (SSE support), `proxy_read_timeout 3600s`
-- `/` → SPA fallback (`try_files $uri /index.html`)
-- `/assets/` → 1-year immutable cache
-- `client_max_body_size 50m` (for batch document uploads)
+- **`docker-compose.yml`** (repo root) — production stack: `hermes` (FastAPI, port 8000, Caddy reverse proxy, persistent volumes)
+- **`portfolio-react/docker-compose.prod.yml`** — used by CI/CD deploy workflow (GitHub Actions deploys this one)
+- **`portfolio-react/docker-compose.yml`** — local development compose (same as above, kept separate)
+- `Caddyfile` — Caddy 2 config: `api.liumingqing.com` reverse_proxy → `hermes:8000` with security headers
+
+**CI/CD**: `.github/workflows/deploy.yml` — builds and deploys on push to `main` with changes to `portfolio-react/hermes/**` or `docker-compose.prod.yml`.
+
+### Docker & nginx (Development/Alternative)
+
+`portfolio-react/docker-compose.yml` — two-service compose for local Docker-based development (frontend nginx + hermes-api). Uses the same nginx config described below.
 
 ### Notes Management System
 
@@ -308,7 +315,11 @@ All in `.env` (copy from `.env.example`). Key variables:
 | `RAG_TOP_K` / `RAG_FINAL_K` / `RRF_K` | Retrieval params (default: 30/5/60) |
 | `DATABASE_PATH` | SQLite path (Docker overrides to `/app/data/hermes.db`) |
 
-## Key Patterns
+## CI/CD
+
+`.github/workflows/deploy.yml` — SSH deploy to VPS on push to `main` when backend files change (triggers on `portfolio-react/hermes/**` and `portfolio-react/docker-compose.prod.yml`). Frontend deploys separately via Cloudflare Pages (auto-build on push).
+
+`.github/workflows/keep-alive.yml` — Cron ping every 10 minutes to prevent free-tier cold starts.
 
 - **Publishing notes**: Use the Admin Notes tab (`#/admin` → Notes). Write in Markdown, set status to "Published", and it appears on `#/knowledge`. Supports AI annotation and RAG KB sync.
 - **Importing .md files**: In Notes editor, click "导入 .md" button in the title toolbar → file picker accepts `.md`/`.markdown`. Auto-extracts first `# heading` as title and first paragraph as description.

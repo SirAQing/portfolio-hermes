@@ -9,7 +9,7 @@ on:
       - main
     paths:
       - 'portfolio-react/hermes/**'
-      - 'portfolio-react/docker-compose.prod.yml'
+·      - 'portfolio-react/docker-compose.prod.yml'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
