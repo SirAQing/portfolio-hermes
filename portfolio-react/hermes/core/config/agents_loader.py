@@ -27,8 +27,6 @@ class AgentPreset:
     temperature: float = 0.7
     max_completion_tokens: int = 2048
     max_iterations: int = 20
-    web_search_enabled: bool = False
-    web_search_max_results: int = 5
     multi_turn_enabled: bool = True
     history_turns: int = 5
     embedding_top_k: int = 10
@@ -62,8 +60,6 @@ def _parse_preset(raw: dict) -> AgentPreset:
     preset.temperature = cfg.get("temperature", 0.7)
     preset.max_completion_tokens = cfg.get("max_completion_tokens", 2048)
     preset.max_iterations = cfg.get("max_iterations", 20)
-    preset.web_search_enabled = cfg.get("web_search_enabled", False)
-    preset.web_search_max_results = cfg.get("web_search_max_results", 5)
     preset.multi_turn_enabled = cfg.get("multi_turn_enabled", True)
     preset.history_turns = cfg.get("history_turns", 5)
     preset.embedding_top_k = cfg.get("embedding_top_k", 10)

@@ -10,32 +10,20 @@ def test_register_builtin_tools_default():
     names = registry.list_names()
     assert "knowledge_search" in names
     assert "todo_write" in names
-    assert "web_search" in names
-    assert "web_fetch" in names
-    assert len(names) == 4
-
-
-def test_register_builtin_tools_disable_web():
-    """web 工具始终注册（enable_web 仅控制 system prompt 提示策略）"""
-    registry = ToolRegistry()
-    register_builtin_tools(registry, enable_web=False)
-    names = registry.list_names()
-    assert "knowledge_search" in names
-    assert "todo_write" in names
-    assert "web_search" in names
-    assert "web_fetch" in names
-    assert len(names) == 4
+    assert "web_search" not in names
+    assert "web_fetch" not in names
+    assert len(names) == 2
 
 
 def test_create_default_registry():
     """创建默认注册表"""
     registry = create_default_registry()
-    assert len(registry) == 4
+    assert len(registry) == 2
     schemas = registry.function_schemas()
-    assert len(schemas) == 4
+    assert len(schemas) == 2
     names = [s["name"] for s in schemas]
     assert "knowledge_search" in names
-    assert "web_search" in names
+    assert "web_search" not in names
 
 
 def test_builtin_tools_first_wins():
@@ -44,7 +32,7 @@ def test_builtin_tools_first_wins():
     register_builtin_tools(registry)
     # 再次注册应不增加
     register_builtin_tools(registry)
-    assert len(registry) == 4
+    assert len(registry) == 2
 
 
 def test_builtin_tools_have_valid_schemas():

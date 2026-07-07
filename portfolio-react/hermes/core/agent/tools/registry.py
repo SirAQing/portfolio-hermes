@@ -102,14 +102,10 @@ class ToolRegistry:
             )
 
 
-def create_default_registry(enable_web: bool = True) -> ToolRegistry:
-    """创建带内置工具的默认注册表。
-
-    Args:
-        enable_web: 是否启用联网搜索工具（web_search / web_fetch）。
-    """
+def create_default_registry() -> ToolRegistry:
+    """创建带内置工具的默认注册表。"""
     from core.agent.tools.builtin import register_builtin_tools
 
     registry = ToolRegistry()
-    register_builtin_tools(registry, enable_web=enable_web)
+    register_builtin_tools(registry)
     return registry

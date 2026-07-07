@@ -24,7 +24,6 @@ SETTING_KEYS = {
     "VISITOR_LLM_API_KEY": "visitor_llm_api_key",
     "VISITOR_LLM_BASE_URL": "visitor_llm_base_url",
     "VISITOR_LLM_MODEL": "visitor_llm_model",
-    "VISITOR_ENABLE_WEB_SEARCH": "visitor_enable_web_search",
     "VISITOR_ENABLE_TOOLS": "visitor_enable_tools",
     "VISITOR_MAX_TOKENS": "visitor_max_tokens",
     "VISITOR_TEMPERATURE": "visitor_temperature",
@@ -33,7 +32,6 @@ SETTING_KEYS = {
     "DEMO_LLM_API_KEY": "demo_llm_api_key",
     "DEMO_LLM_BASE_URL": "demo_llm_base_url",
     "DEMO_LLM_MODEL": "demo_llm_model",
-    "DEMO_ENABLE_WEB_SEARCH": "demo_enable_web_search",
     "DEMO_ENABLE_TOOLS": "demo_enable_tools",
     "DEMO_MAX_TOKENS": "demo_max_tokens",
     "DEMO_TEMPERATURE": "demo_temperature",
@@ -194,13 +192,11 @@ def get_assistant_settings(mode: str = "visitor") -> dict:
     prefix = _MODE_PREFIX.get(mode, "VISITOR_")
     defaults = {
         "visitor": {
-            "enable_web_search": False,
             "enable_tools": False,
             "max_tokens": 1024,
             "temperature": 0.7,
         },
         "demo": {
-            "enable_web_search": True,
             "enable_tools": True,
             "max_tokens": 4096,
             "temperature": 0.7,
@@ -210,7 +206,6 @@ def get_assistant_settings(mode: str = "visitor") -> dict:
     return {
         "system_prompt": get_system_prompt_for_mode(mode),
         "llm_config": get_llm_config_for_mode(mode),
-        "enable_web_search": get_setting(SETTING_KEYS[f"{prefix}ENABLE_WEB_SEARCH"], d["enable_web_search"]),
         "enable_tools": get_setting(SETTING_KEYS[f"{prefix}ENABLE_TOOLS"], d["enable_tools"]),
         "max_tokens": get_setting(SETTING_KEYS[f"{prefix}MAX_TOKENS"], d["max_tokens"]),
         "temperature": get_setting(SETTING_KEYS[f"{prefix}TEMPERATURE"], d["temperature"]),

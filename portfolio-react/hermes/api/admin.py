@@ -50,7 +50,6 @@ class UpdateSettingsRequest(BaseModel):
     visitor_llm_api_key: Optional[str] = None
     visitor_llm_base_url: Optional[str] = None
     visitor_llm_model: Optional[str] = None
-    visitor_enable_web_search: Optional[bool] = None
     visitor_enable_tools: Optional[bool] = None
     visitor_max_tokens: Optional[int] = None
     visitor_temperature: Optional[float] = None
@@ -59,7 +58,6 @@ class UpdateSettingsRequest(BaseModel):
     demo_llm_api_key: Optional[str] = None
     demo_llm_base_url: Optional[str] = None
     demo_llm_model: Optional[str] = None
-    demo_enable_web_search: Optional[bool] = None
     demo_enable_tools: Optional[bool] = None
     demo_max_tokens: Optional[int] = None
     demo_temperature: Optional[float] = None
@@ -198,7 +196,6 @@ async def update_settings(req: UpdateSettingsRequest, ctx: UserContext = Depends
         SETTING_KEYS["VISITOR_LLM_API_KEY"]: req.visitor_llm_api_key,
         SETTING_KEYS["VISITOR_LLM_BASE_URL"]: req.visitor_llm_base_url,
         SETTING_KEYS["VISITOR_LLM_MODEL"]: req.visitor_llm_model,
-        SETTING_KEYS["VISITOR_ENABLE_WEB_SEARCH"]: req.visitor_enable_web_search,
         SETTING_KEYS["VISITOR_ENABLE_TOOLS"]: req.visitor_enable_tools,
         SETTING_KEYS["VISITOR_MAX_TOKENS"]: req.visitor_max_tokens,
         SETTING_KEYS["VISITOR_TEMPERATURE"]: req.visitor_temperature,
@@ -207,7 +204,6 @@ async def update_settings(req: UpdateSettingsRequest, ctx: UserContext = Depends
         SETTING_KEYS["DEMO_LLM_API_KEY"]: req.demo_llm_api_key,
         SETTING_KEYS["DEMO_LLM_BASE_URL"]: req.demo_llm_base_url,
         SETTING_KEYS["DEMO_LLM_MODEL"]: req.demo_llm_model,
-        SETTING_KEYS["DEMO_ENABLE_WEB_SEARCH"]: req.demo_enable_web_search,
         SETTING_KEYS["DEMO_ENABLE_TOOLS"]: req.demo_enable_tools,
         SETTING_KEYS["DEMO_MAX_TOKENS"]: req.demo_max_tokens,
         SETTING_KEYS["DEMO_TEMPERATURE"]: req.demo_temperature,

@@ -103,12 +103,11 @@ class TestPromptLoader:
     def test_get_template_content_with_variables(self):
         content = get_agent_system_prompt(
             mode="rag",
-            variables={"language": "zh-CN", "web_search_status": "enabled"},
+            variables={"language": "zh-CN"},
         )
         assert "zh-CN" in content
-        assert "enabled" in content
         # 未提供的占位符保留
-        assert "{{" not in content or "web_search_status" not in content
+        assert "{{" not in content or "language" not in content
 
     def test_get_agent_system_prompt_pure_mode(self):
         content = get_agent_system_prompt(mode="pure")
@@ -200,13 +199,11 @@ class TestAgentsLoader:
         agent = get_agent_by_id("builtin-quick-answer")
         assert agent.agent_mode == "quick-answer"
         assert agent.system_prompt_id == "default_kb"
-        assert agent.web_search_enabled is False
 
     def test_pure_chat_config(self):
         agent = get_agent_by_id("builtin-pure-chat")
         assert agent.agent_mode == "pure-chat"
         assert agent.system_prompt_id == "pure_chat"
-        assert agent.web_search_enabled is False
 
     def test_list_agent_ids(self):
         ids = list_agent_ids()

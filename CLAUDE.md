@@ -140,13 +140,11 @@ Finalize: stream final answer as chunk events → done
 
 SSE event types: `think` | `tool_call` | `tool_result` | `chunk` | `done` | `iter` (iteration metadata).
 
-**4 built-in tools** (`hermes/core/agent/tools/`):
+**2 built-in tools** (`hermes/core/agent/tools/`):
 - `knowledge_search` — RAG retrieval over uploaded documents
-- `web_search` — real-time web search (DuckDuckGo)
-- `web_fetch` — fetch and parse a specific URL
 - `todo_write` — multi-step plan tracking
 
-Tools registered via `ToolRegistry`; `create_default_registry(enable_web)` creates the default set. The `web_search_enabled` flag also controls the system prompt's web search instruction block.
+Tools registered via `ToolRegistry`; `create_default_registry()` creates the default set.
 
 ### RAG Pipeline
 

@@ -36,7 +36,7 @@ graph TD
 
     subgraph Backend["Backend (FastAPI)"]
         AGENT[AgentEngine ReAct loop]
-        TOOLS[Tools: knowledge_search, web_search, web_fetch, todo_write]
+        TOOLS[Tools: knowledge_search, todo_write]
         RAG[RAG: chunker + embedder + RRF fusion]
         AUTH[JWT Auth + Guest Quota]
         DB[(SQLite + sqlite-vec)]
@@ -96,10 +96,8 @@ graph TD
 - **ReAct loop streaming** &mdash; watch the agent think, call tools, and observe results in real time
   - `ThinkPanel` &mdash; collapsible purple panel showing the agent's reasoning per iteration
   - `ToolPanel` &mdash; collapsible blue panel showing tool name, input, output (or error in red)
-- **4 built-in tools**:
+- **2 built-in tools**:
   - `knowledge_search` &mdash; RAG retrieval over uploaded documents
-  - `web_search` &mdash; real-time web search
-  - `web_fetch` &mdash; fetch and parse a specific URL
   - `todo_write` &mdash; track multi-step plans
 - **Conversation persistence** &mdash; multi-turn context in SQLite
 - **Quick actions** &mdash; preset questions for visitors
@@ -241,7 +239,6 @@ portfolio-react/
 │   │   │   └── tools/
 │   │   │       ├── registry.py   # Tool registry + create_default_registry()
 │   │   │       ├── knowledge_search.py
-│   │   │       ├── web_search.py # web_search + web_fetch
 │   │   │       ├── todo_write.py
 │   │   │       └── builtin.py
 │   │   ├── auth/

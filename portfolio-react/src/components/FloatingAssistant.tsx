@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Briefcase, GitFork, HelpCircle, Mail, ChevronDown, Brain, Wrench, Globe, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { X, Send, Briefcase, GitFork, HelpCircle, Mail, ChevronDown, Brain, Wrench, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
@@ -312,7 +312,6 @@ export const FloatingAssistant = () => {
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [convId, setConvId] = useState<string | null>(null);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const { t, lang } = useI18n();
   const { user, authHeaders, openAuthModal, refreshUser } = useAuth();
   const chatRef = useRef<HTMLDivElement>(null);
@@ -374,7 +373,6 @@ export const FloatingAssistant = () => {
         body: JSON.stringify({
           conversation_id: convId,
           message: text,
-          web_search_enabled: webSearchEnabled,
           mode: 'visitor',
         }),
       });
@@ -593,14 +591,6 @@ export const FloatingAssistant = () => {
             {/* Input Area */}
             <div className="p-3 border-t border-border-subtle bg-bg-card">
               <div className="flex items-center gap-2 px-3 py-2 bg-bg-base border border-border rounded-xl focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/30 transition-all">
-                <button
-                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                  disabled={isSending}
-                  className={`p-1.5 rounded-lg transition-colors ${webSearchEnabled ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white' : 'bg-transparent text-text-muted hover:text-text-primary'}`}
-                  title={webSearchEnabled ? '联网优先模式（已开启）- 将优先使用网络搜索' : '智能联网模式（默认）- 知识库无结果时自动联网'}
-                >
-                  <Globe size={14} />
-                </button>
                 <input
                   ref={inputRef}
                   type="text"

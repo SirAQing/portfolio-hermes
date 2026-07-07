@@ -113,7 +113,6 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
     message: str
     visitor_name: str | None = None
-    web_search_enabled: bool = False
     mode: str = "visitor"  # "visitor" | "demo"
 
 
@@ -374,7 +373,7 @@ async def chat_agent_stream(
         if m["role"] != "system"
     ]
 
-    # RAG 预检索：Agent 端点每次都先检索知识库，无结果时 Agent 会自动通过 web_search 联网
+    # RAG 预检索：Agent 端点每次都先检索知识库
     from core.rag.rag_chat import retrieve_context
     rag_context, _ = await retrieve_context(req.message, mode=req.mode)
 
@@ -382,10 +381,9 @@ async def chat_agent_stream(
     from core.agent.engine import AgentEngine
     from core.agent.tools.registry import create_default_registry
 
-    registry = create_default_registry(enable_web=req.web_search_enabled)
+    registry = create_default_registry()
     engine = AgentEngine(
         registry=registry,
-        web_search_enabled=req.web_search_enabled,
         assistant_mode=req.mode,
     )
 

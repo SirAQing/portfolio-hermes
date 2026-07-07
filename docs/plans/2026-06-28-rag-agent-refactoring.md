@@ -90,8 +90,6 @@ portfolio-react/hermes/
 │   │   │   ├── base.py         #     Tool 抽象基类（4 方法）
 │   │   │   ├── registry.py     #     ToolRegistry ← registry.go
 │   │   │   ├── knowledge_search.py  #  RAG 检索工具
-│   │   │   ├── web_search.py   #     网页搜索工具
-│   │   │   ├── web_fetch.py    #     网页抓取工具
 │   │   │   └── todo_write.py   #     任务规划工具
 │   │   ├── skills/             #   Skills 加载 ← agent/skills/
 │   │   │   └── loader.py       #     从 YAML 加载 Skill 定义
@@ -648,10 +646,8 @@ class ToolRegistry:
         return result[:self.OUTPUT_LIMIT]  # 截断
 ```
 
-**MVP 内置 4 工具**：
+**MVP 内置 2 工具**：
 - `knowledge_search`：调用 RAG 管线（retriever → fusion → rerank）
-- `web_search`：Tavily/SerpAPI 抽象（7 引擎接口预留）
-- `web_fetch`：抓取网页内容
 - `todo_write`：任务规划（多步任务管理）
 
 ### 5.4 Token 管理 (`core/agent/token/`)
@@ -794,7 +790,7 @@ api/chat.py: 构建 AgentEngine
 Agent ReAct 循环:
   Think(LLM + function calling) → 流式 think 事件
     ↓
-  Act(并行执行工具: knowledge_search/web_search/...)
+  Act(并行执行工具: knowledge_search/...)
     ↓
   Observe(停止条件: 自然停/卡死/上限)
     ↓ (满足条件)

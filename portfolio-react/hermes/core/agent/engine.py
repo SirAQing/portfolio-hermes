@@ -37,7 +37,6 @@ class AgentEngine:
         max_iterations: int | None = None,
         system_prompt: str | None = None,
         agent_mode: str = "rag",
-        web_search_enabled: bool = True,
         assistant_mode: str = "visitor",
     ):
         """
@@ -45,7 +44,6 @@ class AgentEngine:
         max_iterations: 最大迭代数
         system_prompt: 自定义 system prompt（None 时从 config_files 加载）
         agent_mode: "rag" 或 "pure"，用于加载默认 prompt
-        web_search_enabled: 用户是否主动开启联网优先模式。
         assistant_mode: "visitor" | "demo" — 决定使用哪套助手配置（系统提示词、模型等）
         """
         self.registry = registry or ToolRegistry()
@@ -54,7 +52,6 @@ class AgentEngine:
         self._last_content = ""
         self._system_prompt = system_prompt
         self._agent_mode = agent_mode
-        self.web_search_enabled = web_search_enabled
         self.assistant_mode = assistant_mode
 
     def _get_system_prompt(self) -> str:
@@ -71,26 +68,6 @@ class AgentEngine:
                 except Exception:
                     prompt = get_setting(SETTING_KEYS["SYSTEM_PROMPT"], DEFAULT_SYSTEM_PROMPT)
 
-        web_status = "auto" if not self.web_search_enabled else "forced"
-        prompt = prompt.replace("{{web_search_status}}", web_status)
-        if self.web_search_enabled:
-            prompt = prompt.replace(
-                "{{web_search_instruction}}",
-                "Web search is in FORCED mode (user explicitly enabled it). You can prioritize web_search for this query. "
-                "You may use web_search and web_fetch tools proactively, including for real-time information, latest news, "
-                "or content that may benefit from up-to-date online sources. Knowledge base search is still available as a complement.",
-            )
-        else:
-            prompt = prompt.replace(
-                "{{web_search_instruction}}",
-                "Web search is in AUTO mode (always available). Follow these rules:\n"
-                "1. ALWAYS search the knowledge base first using knowledge_search.\n"
-                "2. If knowledge_search returns [NO_RELEVANT_RESULTS], [NO_KNOWLEDGE_BASE], or [LOW_CONFIDENCE], "
-                "you MUST automatically use web_search to find answers online — do NOT ask the user to enable web search.\n"
-                "3. For questions clearly requiring real-time data (current events, latest news, live prices, weather, etc.), "
-                "you may use web_search directly or in parallel with knowledge_search.\n"
-                "4. After web search, synthesize results naturally without mentioning the automatic fallback.",
-            )
         return prompt
 
     async def run(
@@ -151,8 +128,7 @@ class AgentEngine:
                         "role": "user",
                         "content": (
                             "你刚才没有调用任何工具。请继续执行六步闭环流程："
-                            "使用 knowledge_search 检索知识库验证你的回答，"
-                            "如果知识库无结果则使用 web_search 联网搜索。"
+                            "使用 knowledge_search 检索知识库验证你的回答。"
                             "至少经过3轮检索验证后才能输出最终答案。"
                         ),
                     })

@@ -63,7 +63,7 @@ class KnowledgeSearchTool(Tool):
     async def execute(self, query: str, kb_id: str = None, **kwargs) -> str:
         kb_ids = [kb_id] if kb_id else get_active_kb_ids()
         if not kb_ids:
-            return "[NO_KNOWLEDGE_BASE] 没有配置任何知识库。请直接使用 web_search 搜索互联网获取信息。"
+            return "[NO_KNOWLEDGE_BASE] 没有配置任何知识库。请基于你的内部知识回答，或明确告知用户当前没有足够资料。"
 
         expanded_query = _expand_query(query)
         if expanded_query != query:
@@ -83,7 +83,7 @@ class KnowledgeSearchTool(Tool):
         if not all_results:
             return (
                 "[NO_RELEVANT_RESULTS] 知识库中没有找到与查询相关的内容。"
-                "请立即使用 web_search 工具搜索互联网获取信息，不要询问用户是否需要联网。"
+                "请基于你的内部知识回答，或明确告知用户当前没有足够资料。"
             )
 
         if len(kb_ids) > 1:
@@ -119,7 +119,7 @@ class KnowledgeSearchTool(Tool):
                 "可能无法准确回答用户问题。以下是找到的内容供参考：\n\n"
                 f"{context}\n\n"
                 f"来源文档:\n{sources}\n\n"
-                "建议同时使用 web_search 工具搜索互联网获取更准确、更新的信息。"
+                "请基于你的内部知识补充回答，或明确告知用户当前知识库资料不足。"
             )
 
         context = build_context(all_results)

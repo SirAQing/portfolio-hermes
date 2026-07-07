@@ -18,7 +18,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Send,
-  Globe,
   User,
   Bot,
   Sparkles,
@@ -126,7 +125,6 @@ export const ChatPage = ({ onNavigate }: { onNavigate: (hash: string) => void })
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingStage, setLoadingStage] = useState(0);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // 新增：会话管理功能
@@ -337,7 +335,6 @@ export const ChatPage = ({ onNavigate }: { onNavigate: (hash: string) => void })
         body: JSON.stringify({
           conversation_id: conv?.convId,
           message: text,
-          web_search_enabled: webSearchEnabled,
           mode: 'demo',
         }),
       });
@@ -701,8 +698,8 @@ export const ChatPage = ({ onNavigate }: { onNavigate: (hash: string) => void })
                 className="text-text-secondary text-center max-w-lg mb-10 text-sm leading-relaxed"
               >
                 {lang === 'zh'
-                  ? '基于 RAG 检索增强生成和 Agent 智能体技术，我可以回答关于我的经历、项目、技术栈的问题，也可以联网搜索最新信息。'
-                  : 'Powered by RAG and Agent technology. Ask me about experience, projects, tech stack, or search the web.'}
+                  ? '基于 RAG 检索增强生成和 Agent 智能体技术，我可以回答关于我的经历、项目、技术栈的问题。'
+                  : 'Powered by RAG and Agent technology. Ask me about experience, projects, and tech stack.'}
               </motion.p>
               <motion.div
                 initial={{ y: 10, opacity: 0 }}
@@ -807,20 +804,6 @@ export const ChatPage = ({ onNavigate }: { onNavigate: (hash: string) => void })
         <div className="border-t border-border bg-bg-card/80 backdrop-blur-xl p-4 flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_-1px_3px_rgba(0,0,0,0.03)]">
           <div className="w-full px-0 sm:px-1">
             <div className="flex items-end gap-2 bg-bg-card rounded-[1.25rem] border border-border p-2 focus-within:border-blue-400/60 dark:focus-within:border-blue-600/50 focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.08)] transition-all">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${
-                  webSearchEnabled
-                    ? 'bg-blue-500 text-white shadow-[0_2px_8px_-1px_rgba(59,130,246,0.4)]'
-                    : 'text-text-muted hover:text-text-primary hover:bg-bg-base'
-                }`}
-                title={webSearchEnabled
-                  ? (lang === 'zh' ? '联网优先模式（已开启）- 将优先使用网络搜索' : 'Web-first mode (enabled) - Web search first')
-                  : (lang === 'zh' ? '智能联网模式（默认）- 知识库无结果时自动联网' : 'Smart mode (default) - Auto web search when KB has no results')}
-              >
-                <Globe size={18} />
-              </motion.button>
               <textarea
                 ref={textareaRef}
                 value={inputValue}
@@ -831,9 +814,7 @@ export const ChatPage = ({ onNavigate }: { onNavigate: (hash: string) => void })
                     handleSend();
                   }
                 }}
-                placeholder={webSearchEnabled
-                  ? (lang === 'zh' ? '联网优先模式：输入问题搜索网络...' : 'Web-first mode: Search the web...')
-                  : (lang === 'zh' ? '输入你的问题... (Enter发送，Shift+Enter换行)' : 'Type your message... (Enter to send, Shift+Enter for newline)')}
+                placeholder={lang === 'zh' ? '输入你的问题... (Enter发送，Shift+Enter换行)' : 'Type your message... (Enter to send, Shift+Enter for newline)'}
                 rows={1}
                 className="flex-1 bg-transparent px-1 py-2.5 resize-none outline-none text-sm max-h-40 leading-relaxed placeholder:text-text-muted"
                 disabled={isSending}

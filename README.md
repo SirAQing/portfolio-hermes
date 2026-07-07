@@ -79,8 +79,6 @@ graph TD
 
         subgraph Tools["Agent Tools"]
             KS[knowledge_search — RAG Retrieval]
-            WS[web_search — DuckDuckGo]
-            WF[web_fetch — URL Fetch + Parse]
             TW[todo_write — Plan Tracking]
         end
 
@@ -209,7 +207,7 @@ User Query
 
 - **Parallel tool execution** &mdash; Multiple tools can be called in a single Act step; results are gathered before the next Think.
 - **Token compression** &mdash; When history exceeds 80% of `max_context_tokens` (default 32K), a consolidator summarizes older turns to prevent context overflow.
-- **4 builtin tools** &mdash; `knowledge_search` (RAG retrieval), `web_search` (DuckDuckGo), `web_fetch` (URL fetch + parse), `todo_write` (plan tracking). Tools implement a `Tool` interface (`Name` / `Description` / `Parameters` / `Execute`).
+- **2 builtin tools** &mdash; `knowledge_search` (RAG retrieval), `todo_write` (plan tracking). Tools implement a `Tool` interface (`Name` / `Description` / `Parameters` / `Execute`).
 - **SSE event protocol** &mdash; Each loop iteration emits typed events (`think`, `tool_call`, `tool_result`, `chunk`, `done`, `error`) that the frontend renders in real-time with separate panels for reasoning and tool calls.
 
 **Architecture origin:** Ported from WeKnora's Go implementation (`agent/engine.go`), reimplemented in Python with `asyncio` for native concurrency.
@@ -404,11 +402,9 @@ portfolio-hermes/
 │   │   │   │   ├── events.py       # SSE event types (think/tool_call/...)
 │   │   │   │   ├── memory/consolidator.py  # Context summarization
 │   │   │   │   ├── token/compress.py       # Token budget management
-│   │   │   │   └── tools/          # 4 builtin tools
+│   │   │   │   └── tools/          # 2 builtin tools
 │   │   │   │       ├── base.py / registry.py / builtin.py
 │   │   │   │       ├── knowledge_search.py  # RAG retrieval
-│   │   │   │       ├── web_search.py        # DuckDuckGo
-│   │   │   │       ├── web_fetch.py         # URL fetch + parse
 │   │   │   │       └── todo_write.py        # Plan tracking
 │   │   │   ├── auth/               # JWT + RBAC
 │   │   │   │   ├── jwt_handler.py  # Access + refresh token creation/decode

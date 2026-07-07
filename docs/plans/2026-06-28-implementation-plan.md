@@ -1354,7 +1354,7 @@ git commit -m "feat(auth): Phase 1 complete — auth system with roles, quota, i
 ### Task 3.5: 最终答案生成（finalize.py）
 ### Task 3.6: AgentEngine 主循环（engine.py）
 ### Task 3.7: 内置工具 — knowledge_search
-### Task 3.8: 内置工具 — web_search + web_fetch
+### Task 3.8: ~~内置工具 — web_search + web_fetch~~（已移除，所有问答仅基于知识库）
 ### Task 3.9: 内置工具 — todo_write
 ### Task 3.10: Token 压缩（compress.py, 0.8 阈值）
 ### Task 3.11: 记忆整合（consolidator.py, 0.5 阈值）

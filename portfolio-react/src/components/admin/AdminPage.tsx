@@ -66,7 +66,6 @@ interface SystemSettings {
   visitor_llm_api_key?: string;
   visitor_llm_base_url?: string;
   visitor_llm_model?: string;
-  visitor_enable_web_search?: boolean;
   visitor_enable_tools?: boolean;
   visitor_max_tokens?: number;
   visitor_temperature?: number;
@@ -74,7 +73,6 @@ interface SystemSettings {
   demo_llm_api_key?: string;
   demo_llm_base_url?: string;
   demo_llm_model?: string;
-  demo_enable_web_search?: boolean;
   demo_enable_tools?: boolean;
   demo_max_tokens?: number;
   demo_temperature?: number;
@@ -161,7 +159,6 @@ const AISettingsTab = ({ authHeaders }: { authHeaders: () => Record<string, stri
   const llmUrl = `${prefix}_llm_base_url` as keyof SystemSettings;
   const llmModel = `${prefix}_llm_model` as keyof SystemSettings;
   const sysPromptKey = `${prefix}_system_prompt` as keyof SystemSettings;
-  const enableWebKey = `${prefix}_enable_web_search` as keyof SystemSettings;
   const enableToolsKey = `${prefix}_enable_tools` as keyof SystemSettings;
   const maxTokensKey = `${prefix}_max_tokens` as keyof SystemSettings;
   const tempKey = `${prefix}_temperature` as keyof SystemSettings;
@@ -223,12 +220,6 @@ const AISettingsTab = ({ authHeaders }: { authHeaders: () => Record<string, stri
             icon={Zap}
           >
             <div className="space-y-3">
-              <ToggleRow
-                label="允许联网搜索"
-                description="启用后 AI 可调用网络搜索获取最新信息"
-                checked={!!settings[enableWebKey]}
-                onChange={() => setSettings(s => ({ ...s, [enableWebKey]: !s[enableWebKey] }))}
-              />
               <ToggleRow
                 label="允许工具调用 (Agent 模式)"
                 description="启用后 AI 可调用知识库检索等工具"
